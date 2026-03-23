@@ -1,6 +1,37 @@
 import { ChatMessage, Ticket } from '../models/index.js';
 import { sendLineNotification } from '../services/lineNotify.js';
 import { sendMessageNotification } from '../services/email.js';
+import { io } from '../server.js';
+import multer from 'multer';
+import path from 'path';
+import fs from 'fs';
+
+// Setup multer for chat attachments
+const uploadDir = 'uploads/chat';
+if (!fs.existsSync(uploadDir)) {
+  fs.mkdirSync(uploadDir, { recursive: true });
+}
+
+const storage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    cb(null, uploadDir);
+  },
+  filename: (req, file, cb) => {
+    cb(null, `chat-${Date.now()}${path.extname(file.originalname)}`);
+  }
+});
+
+export const upload = multer({
+  storage,
+  limits: { fileSize: 5 * 1024 * 1024 }, // 5MB limit
+  fileFilter: (req, file, cb) => {
+    const filetypes = /jpeg|jpg|png|gif|webp/;
+    const mimetype = filetypes.test(file.mimetype);
+    const extname = filetypes.test(path.extname(file.originalname).toLowerCase());
+    if (mimetype && extname) return cb(null, true);
+    cb(new Error('Only images are allowed'));
+  }
+});
 
 export const getMessages = async (req, res) => {
   try {
@@ -23,9 +54,10 @@ export const createMessage = async (req, res) => {
   try {
     const { id } = req.params;
     const { message, sender_type, sender_name } = req.body;
+    const file = req.file;
 
-    if (!message || !sender_type) {
-      return res.status(400).json({ message: 'Message and sender type are required' });
+    if (!message && !file) {
+      return res.status(400).json({ message: 'Message or file is required' });
     }
 
     const ticket = await Ticket.findById(id);
@@ -33,19 +65,25 @@ export const createMessage = async (req, res) => {
       return res.status(404).json({ message: 'Ticket not found' });
     }
 
+    const filePath = file ? `/uploads/chat/${file.filename}` : null;
+
     const chatMessage = await ChatMessage.create({
       ticket_id: id,
       sender_type,
       sender_name: sender_name || (sender_type === 'staff' ? req.user?.full_name : 'User'),
       user_id: sender_type === 'staff' ? req.user?.id : null,
       message,
+      file_path: filePath,
     });
 
     // Send notifications for user messages
     if (sender_type === 'user') {
       await sendLineNotification(ticket, 'message');
-      await sendMessageNotification(ticket, message, sender_type);
+      await sendMessageNotification(ticket, message || 'Sent an image', sender_type);
     }
+
+    // Emit socket event for real-time update
+    io.to(`ticket_${id}`).emit('new_message', chatMessage);
 
     res.status(201).json(chatMessage);
   } catch (error) {

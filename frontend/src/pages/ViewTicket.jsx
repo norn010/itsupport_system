@@ -8,19 +8,27 @@ const ViewTicket = () => {
   const [ticket, setTicket] = useState(null)
   const [messages, setMessages] = useState([])
   const [newMessage, setNewMessage] = useState('')
+  const [previewImage, setPreviewImage] = useState(null)
+  const [selectedFile, setSelectedFile] = useState(null)
   const [loading, setLoading] = useState(true)
+  const [sending, setSending] = useState(false)
   const [error, setError] = useState(null)
   const [selectedImage, setSelectedImage] = useState(null)
+  const fileInputRef = useRef(null)
   const messagesEndRef = useRef(null)
   const socketRef = useRef(null)
   const senderNameRef = useRef('')
 
   useEffect(() => {
     fetchTicket()
-    
+  }, [id])
+
+  useEffect(() => {
+    if (!ticket?.id) return
+
     // Setup socket connection
-    socketRef.current = io(window.location.origin)
-    socketRef.current.emit('join_ticket', id)
+    socketRef.current = io()
+    socketRef.current.emit('join_ticket', ticket.id)
     
     socketRef.current.on('new_message', (message) => {
       setMessages(prev => [...prev, message])
@@ -29,7 +37,7 @@ const ViewTicket = () => {
     return () => {
       socketRef.current?.disconnect()
     }
-  }, [id])
+  }, [ticket?.id])
 
   useEffect(() => {
     scrollToBottom()
@@ -51,32 +59,55 @@ const ViewTicket = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
   }
 
+  const handlePaste = (e) => {
+    const items = e.clipboardData.items;
+    for (let i = 0; i < items.length; i++) {
+      if (items[i].type.indexOf('image') !== -1) {
+        const file = items[i].getAsFile();
+        handleSelectedFile(file);
+      }
+    }
+  }
+
+  const handleSelectedFile = (file) => {
+    if (file) {
+      setSelectedFile(file);
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setPreviewImage(reader.result);
+      };
+      reader.readAsDataURL(file);
+    }
+  }
+
   const handleSendMessage = async (e) => {
     e.preventDefault()
-    if (!newMessage.trim()) return
+    if (!newMessage.trim() && !selectedFile) return
+    setSending(true)
 
     const senderName = senderNameRef.current || 'User'
     
-    // Send via socket
-    socketRef.current.emit('send_message', {
-      ticket_id: ticket.id,
-      sender_type: 'user',
-      sender_name: senderName,
-      message: newMessage,
-    })
-
-    // Also save via API
     try {
-      await axios.post(`/api/tickets/${ticket.id}/messages`, {
-        message: newMessage,
-        sender_type: 'user',
-        sender_name: senderName,
+      const formData = new FormData();
+      formData.append('message', newMessage);
+      formData.append('sender_type', 'user');
+      formData.append('sender_name', senderName);
+      if (selectedFile) {
+        formData.append('image', selectedFile);
+      }
+
+      await axios.post(`/api/tickets/${ticket.id}/messages`, formData, {
+        headers: { 'Content-Type': 'multipart/form-data' }
       })
+      
+      setNewMessage('')
+      setSelectedFile(null)
+      setPreviewImage(null)
     } catch (err) {
       console.error('Error saving message:', err)
+    } finally {
+      setSending(false)
     }
-
-    setNewMessage('')
   }
 
   const getStatusBadge = (status) => {
@@ -198,7 +229,15 @@ const ViewTicket = () => {
                   <p className="text-xs opacity-75 mb-1">
                     {msg.sender_name} • {new Date(msg.created_at).toLocaleTimeString()}
                   </p>
-                  <p>{msg.message}</p>
+                  {msg.file_path && (
+                    <img 
+                      src={msg.file_path} 
+                      alt="Chat attachment" 
+                      className="max-w-full rounded mb-2 cursor-pointer hover:opacity-90"
+                      onClick={() => setSelectedImage(msg.file_path)}
+                    />
+                  )}
+                  {msg.message && <p>{msg.message}</p>}
                 </div>
               </div>
             ))
@@ -206,21 +245,59 @@ const ViewTicket = () => {
           <div ref={messagesEndRef} />
         </div>
 
+        {previewImage && (
+          <div className="relative inline-block mb-4">
+            <img src={previewImage} alt="Preview" className="h-20 w-20 object-cover rounded border" />
+            <button
+              onClick={() => { setPreviewImage(null); setSelectedFile(null); }}
+              className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs"
+            >✕</button>
+          </div>
+        )}
+        
         <form onSubmit={handleSendMessage} className="flex gap-2">
           <input
             type="text"
             placeholder="Your name (optional)"
             className="input w-1/4"
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') {
+                e.preventDefault()
+                document.getElementById('chat-message-input').focus()
+              }
+            }}
             onChange={(e) => senderNameRef.current = e.target.value}
           />
+          <div className="flex-1 relative">
+            <input
+              id="chat-message-input"
+              type="text"
+              value={newMessage}
+              onChange={(e) => setNewMessage(e.target.value)}
+              onPaste={handlePaste}
+              placeholder="Type your message or paste an image..."
+              className="input w-full pr-10"
+              autoComplete="off"
+              disabled={sending}
+            />
+            <button
+              type="button"
+              onClick={() => fileInputRef.current?.click()}
+              className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-primary-600"
+            >
+              📎
+            </button>
+          </div>
           <input
-            type="text"
-            value={newMessage}
-            onChange={(e) => setNewMessage(e.target.value)}
-            placeholder="Type your message..."
-            className="input flex-1"
+            type="file"
+            ref={fileInputRef}
+            className="hidden"
+            accept="image/*"
+            onChange={(e) => handleSelectedFile(e.target.files[0])}
           />
-          <button type="submit" className="btn-primary">Send</button>
+          <button type="submit" className="btn-primary" disabled={sending}>
+            {sending ? 'Sending...' : 'Send'}
+          </button>
         </form>
       </div>
 

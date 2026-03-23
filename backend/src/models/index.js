@@ -4,8 +4,8 @@ export const Ticket = {
   async create({ ticket_id, name, department, issue_title, description, priority }) {
     const query = `
       INSERT INTO tickets (ticket_id, name, department, issue_title, description, priority)
+      OUTPUT inserted.*
       VALUES ($1, $2, $3, $4, $5, $6)
-      RETURNING *
     `;
     const values = [ticket_id, name, department, issue_title, description, priority];
     const result = await pool.query(query, values);
@@ -38,12 +38,12 @@ export const Ticket = {
 
     if (search) {
       paramCount++;
-      query += ` AND (t.ticket_id ILIKE $${paramCount} OR t.issue_title ILIKE $${paramCount})`;
+      query += ` AND (t.ticket_id LIKE $${paramCount} OR t.issue_title LIKE $${paramCount})`;
       values.push(`%${search}%`);
     }
 
-    query += ` ORDER BY t.created_at DESC LIMIT $${++paramCount} OFFSET $${++paramCount}`;
-    values.push(limit, offset);
+    query += ` ORDER BY t.created_at DESC OFFSET $${++paramCount} ROWS FETCH NEXT $${++paramCount} ROWS ONLY`;
+    values.push(offset, limit);
 
     const result = await pool.query(query, values);
     return result.rows;
@@ -95,9 +95,9 @@ export const Ticket = {
 
     const query = `
       UPDATE tickets 
-      SET ${fields.join(', ')}, updated_at = CURRENT_TIMESTAMP
+      SET ${fields.join(', ')}, updated_at = GETDATE()
+      OUTPUT inserted.*
       WHERE id = $${paramCount}
-      RETURNING *
     `;
 
     const result = await pool.query(query, values);
@@ -108,18 +108,18 @@ export const Ticket = {
     const stats = await pool.query(`
       SELECT 
         COUNT(*) as total,
-        COUNT(*) FILTER (WHERE status = 'Open') as open,
-        COUNT(*) FILTER (WHERE status = 'In Progress') as in_progress,
-        COUNT(*) FILTER (WHERE status = 'Resolved') as resolved,
-        COUNT(*) FILTER (WHERE status = 'Closed') as closed
+        SUM(CASE WHEN status = 'Open' THEN 1 ELSE 0 END) as open,
+        SUM(CASE WHEN status = 'In Progress' THEN 1 ELSE 0 END) as in_progress,
+        SUM(CASE WHEN status = 'Resolved' THEN 1 ELSE 0 END) as resolved,
+        SUM(CASE WHEN status = 'Closed' THEN 1 ELSE 0 END) as closed
       FROM tickets
     `);
 
     const daily = await pool.query(`
-      SELECT DATE(created_at) as date, COUNT(*) as count
+      SELECT CAST(created_at AS DATE) as date, COUNT(*) as count
       FROM tickets
-      WHERE created_at >= CURRENT_DATE - INTERVAL '30 days'
-      GROUP BY DATE(created_at)
+      WHERE created_at >= DATEADD(day, -30, GETDATE())
+      GROUP BY CAST(created_at AS DATE)
       ORDER BY date
     `);
 
@@ -145,8 +145,8 @@ export const TicketImage = {
   async create(ticketId, filePath) {
     const query = `
       INSERT INTO ticket_images (ticket_id, file_path)
+      OUTPUT inserted.*
       VALUES ($1, $2)
-      RETURNING *
     `;
     const result = await pool.query(query, [ticketId, filePath]);
     return result.rows[0];
@@ -160,13 +160,13 @@ export const TicketImage = {
 };
 
 export const ChatMessage = {
-  async create({ ticket_id, sender_type, sender_name, user_id, message }) {
+  async create({ ticket_id, sender_type, sender_name, user_id, message, file_path }) {
     const query = `
-      INSERT INTO chat_messages (ticket_id, sender_type, sender_name, user_id, message)
-      VALUES ($1, $2, $3, $4, $5)
-      RETURNING *
+      INSERT INTO chat_messages (ticket_id, sender_type, sender_name, user_id, message, file_path)
+      OUTPUT inserted.*
+      VALUES ($1, $2, $3, $4, $5, $6)
     `;
-    const values = [ticket_id, sender_type, sender_name, user_id, message];
+    const values = [ticket_id, sender_type, sender_name, user_id, message, file_path];
     const result = await pool.query(query, values);
     return result.rows[0];
   },

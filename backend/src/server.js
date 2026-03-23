@@ -5,6 +5,7 @@ import { createServer } from 'http';
 import { Server } from 'socket.io';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import fs from 'fs';
 
 import authRoutes from './routes/auth.js';
 import ticketRoutes from './routes/tickets.js';
@@ -30,8 +31,14 @@ app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
+// Ensure uploads directory exists
+const uploadDir = path.join(__dirname, '../uploads');
+if (!fs.existsSync(uploadDir)) {
+  fs.mkdirSync(uploadDir, { recursive: true });
+}
+
 // Static files for uploads
-app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
+app.use('/uploads', express.static(uploadDir));
 
 // API Routes
 app.use('/api/auth', authRoutes);
@@ -55,26 +62,6 @@ io.on('connection', (socket) => {
   socket.on('leave_ticket', (ticketId) => {
     socket.leave(`ticket_${ticketId}`);
     console.log(`Socket ${socket.id} left ticket_${ticketId}`);
-  });
-
-  socket.on('send_message', async (data) => {
-    const { ticket_id, sender_type, sender_name, message, user_id } = data;
-
-    try {
-      const chatMessage = await ChatMessage.create({
-        ticket_id,
-        sender_type,
-        sender_name,
-        user_id,
-        message,
-      });
-
-      // Broadcast to all clients in the ticket room
-      io.to(`ticket_${ticket_id}`).emit('new_message', chatMessage);
-    } catch (error) {
-      console.error('Error saving message:', error);
-      socket.emit('error', { message: 'Failed to send message' });
-    }
   });
 
   socket.on('disconnect', () => {
