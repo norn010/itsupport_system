@@ -8,7 +8,11 @@ const CreateTicket = () => {
     issue_title: '',
     description: '',
     priority: 'Medium',
+    category_id: '',
+    subcategory_id: '',
   })
+  const [categories, setCategories] = useState([])
+  const [subcategories, setSubcategories] = useState([])
   const [files, setFiles] = useState([])
   const [previewUrls, setPreviewUrls] = useState([])
   const [loading, setLoading] = useState(false)
@@ -16,8 +20,26 @@ const CreateTicket = () => {
   const [error, setError] = useState(null)
 
   const handleChange = (e) => {
-    setFormData({ ...formData, [e.target.name]: e.target.value })
+    const { name, value } = e.target
+    setFormData(prev => ({ ...prev, [name]: value }))
+
+    if (name === 'category_id') {
+      setFormData(prev => ({ ...prev, subcategory_id: '' }))
+      if (value) {
+        axios.get(`/api/categories/${value}/subcategories`)
+          .then(res => setSubcategories(res.data))
+          .catch(err => console.error(err))
+      } else {
+        setSubcategories([])
+      }
+    }
   }
+
+  React.useEffect(() => {
+    axios.get('/api/categories')
+      .then(res => setCategories(res.data))
+      .catch(err => console.error(err))
+  }, [])
 
   const handleFileChange = (e) => {
     const selectedFiles = Array.from(e.target.files)
@@ -63,7 +85,10 @@ const CreateTicket = () => {
         issue_title: '',
         description: '',
         priority: 'Medium',
+        category_id: '',
+        subcategory_id: '',
       })
+      setSubcategories([])
       setFiles([])
       setPreviewUrls([])
     } catch (err) {
@@ -130,6 +155,39 @@ const CreateTicket = () => {
               className="input"
               placeholder="e.g., IT, HR, Sales"
             />
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Category</label>
+              <select
+                name="category_id"
+                value={formData.category_id}
+                onChange={handleChange}
+                className="input"
+              >
+                <option value="">-- Select Category --</option>
+                {categories.map(c => (
+                  <option key={c.id} value={c.id}>{c.name}</option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Subcategory</label>
+              <select
+                name="subcategory_id"
+                value={formData.subcategory_id}
+                onChange={handleChange}
+                className="input"
+                disabled={!formData.category_id || subcategories.length === 0}
+              >
+                <option value="">-- Select Subcategory --</option>
+                {subcategories.map(sc => (
+                  <option key={sc.id} value={sc.id}>{sc.name}</option>
+                ))}
+              </select>
+            </div>
           </div>
 
           <div>

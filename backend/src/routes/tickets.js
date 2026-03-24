@@ -2,6 +2,7 @@ import { Router } from 'express';
 import multer from 'multer';
 import path from 'path';
 import { v4 as uuidv4 } from 'uuid';
+import rateLimit from 'express-rate-limit';
 import {
   createTicket,
   getTickets,
@@ -9,6 +10,7 @@ import {
   updateTicket,
   getITStaff,
   getStats,
+  exportTicketsExcel,
 } from '../controllers/tickets.js';
 import { authenticate, requireRole } from '../middleware/auth.js';
 
@@ -42,13 +44,20 @@ const upload = multer({
 
 const router = Router();
 
+const createTicketLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 5, // limit each IP to 5 requests per windowMs
+  message: 'Too many tickets created from this IP, please try again after 15 minutes'
+});
+
 // Public routes
-router.post('/', upload.array('images', 5), createTicket);
+router.post('/', createTicketLimiter, upload.array('images', 5), createTicket);
 router.get('/search/:id', getTicketById);
 
 // Protected routes
 router.get('/', authenticate, requireRole('IT', 'MANAGER'), getTickets);
-router.get('/stats/dashboard', authenticate, requireRole('MANAGER'), getStats);
+router.get('/export/excel', authenticate, requireRole('MANAGER', 'IT'), exportTicketsExcel);
+router.get('/stats/dashboard', authenticate, requireRole('MANAGER', 'IT'), getStats);
 router.get('/staff/it', authenticate, requireRole('IT', 'MANAGER'), getITStaff);
 router.get('/:id', authenticate, requireRole('IT', 'MANAGER'), getTicketById);
 router.patch('/:id', authenticate, requireRole('IT', 'MANAGER'), updateTicket);

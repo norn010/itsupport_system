@@ -19,6 +19,10 @@ const ViewTicket = () => {
   const socketRef = useRef(null)
   const senderNameRef = useRef('')
 
+  const [feedbackRating, setFeedbackRating] = useState(0)
+  const [feedbackComment, setFeedbackComment] = useState('')
+  const [submittingFeedback, setSubmittingFeedback] = useState(false)
+
   useEffect(() => {
     fetchTicket()
   }, [id])
@@ -26,12 +30,20 @@ const ViewTicket = () => {
   useEffect(() => {
     if (!ticket?.id) return
 
-    // Setup socket connection
     socketRef.current = io()
     socketRef.current.emit('join_ticket', ticket.id)
     
     socketRef.current.on('new_message', (message) => {
       setMessages(prev => [...prev, message])
+    })
+
+    socketRef.current.on('ticket_updated', (updatedTicket) => {
+      setTicket(prev => ({
+        ...prev,
+        ...updatedTicket,
+        feedback_rating: prev.feedback_rating,
+        feedback_comment: prev.feedback_comment
+      }))
     })
 
     return () => {
@@ -107,6 +119,27 @@ const ViewTicket = () => {
       console.error('Error saving message:', err)
     } finally {
       setSending(false)
+    }
+  }
+
+  const handleFeedbackSubmit = async (e) => {
+    e.preventDefault()
+    if (!feedbackRating) return alert('Please select a rating')
+    setSubmittingFeedback(true)
+    try {
+      const { data } = await axios.post(`/api/tickets/${ticket.ticket_id}/feedback`, {
+        rating: feedbackRating,
+        comment: feedbackComment
+      })
+      setTicket(prev => ({ 
+        ...prev, 
+        feedback_rating: data.feedback.rating, 
+        feedback_comment: data.feedback.comment 
+      }))
+    } catch (err) {
+      alert(err.response?.data?.message || 'Failed to submit feedback')
+    } finally {
+      setSubmittingFeedback(false)
     }
   }
 
@@ -202,6 +235,48 @@ const ViewTicket = () => {
                 />
               ))}
             </div>
+          </div>
+        )}
+
+        {/* Feedback Section */}
+        {(ticket.status === 'Resolved' || ticket.status === 'Closed') && (
+          <div className="mt-8 border-t pt-6">
+            <h3 className="text-lg font-bold mb-4">How was our service?</h3>
+            {ticket.feedback_rating ? (
+              <div className="bg-green-50 p-4 rounded-lg border border-green-100">
+                <p className="font-semibold text-green-800 flex items-center gap-2">
+                  <span className="text-xl">{'⭐'.repeat(ticket.feedback_rating)} </span>
+                  Thank you for your feedback!
+                </p>
+                {ticket.feedback_comment && (
+                  <p className="text-green-700 mt-2 text-sm italic">"{ticket.feedback_comment}"</p>
+                )}
+              </div>
+            ) : (
+              <form onSubmit={handleFeedbackSubmit} className="bg-gray-50 p-4 rounded-lg border border-gray-200">
+                <div className="flex gap-2 mb-4">
+                  {[1, 2, 3, 4, 5].map(star => (
+                    <button 
+                      key={star} 
+                      type="button" 
+                      onClick={() => setFeedbackRating(star)}
+                      className={`text-3xl hover:scale-110 transition ${feedbackRating >= star ? 'text-yellow-400' : 'text-gray-300'}`}
+                    >
+                      ★
+                    </button>
+                  ))}
+                </div>
+                <textarea 
+                  value={feedbackComment}
+                  onChange={(e) => setFeedbackComment(e.target.value)}
+                  placeholder="Any comments? (Optional)"
+                  className="input w-full mb-3 text-sm h-20"
+                />
+                <button type="submit" disabled={submittingFeedback || !feedbackRating} className="btn-primary text-sm">
+                  {submittingFeedback ? 'Submitting...' : 'Submit Feedback'}
+                </button>
+              </form>
+            )}
           </div>
         )}
       </div>

@@ -1,6 +1,8 @@
 import { ChatMessage, Ticket } from '../models/index.js';
 import { sendLineNotification } from '../services/lineNotify.js';
+import { sendDiscordNotification } from '../services/discordNotify.js';
 import { sendMessageNotification } from '../services/email.js';
+import { createSystemNotification, notifyAllITStaff } from './notifications.js';
 import { io } from '../server.js';
 import multer from 'multer';
 import path from 'path';
@@ -79,7 +81,16 @@ export const createMessage = async (req, res) => {
     // Send notifications for user messages
     if (sender_type === 'user') {
       await sendLineNotification(ticket, 'message');
+      await sendDiscordNotification(ticket, 'message', message || 'Sent an image');
       await sendMessageNotification(ticket, message || 'Sent an image', sender_type);
+      
+      const notifMsg = `${ticket.name} sent a new message in ${ticket.ticket_id}`;
+      // Notify assigned staff or all IT staff
+      if (ticket.assigned_to) {
+        await createSystemNotification(ticket.assigned_to, 'new_message', 'New Message', notifMsg, ticket.ticket_id);
+      } else {
+        await notifyAllITStaff('new_message', 'New Message (Unassigned)', notifMsg, ticket.ticket_id);
+      }
     }
 
     // Emit socket event for real-time update

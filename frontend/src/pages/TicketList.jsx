@@ -27,6 +27,30 @@ const TicketList = () => {
     }
   }
 
+  const handleExport = async () => {
+    try {
+      const params = new URLSearchParams()
+      if (filters.status) params.append('status', filters.status)
+      if (filters.priority) params.append('priority', filters.priority)
+      if (filters.search) params.append('search', filters.search)
+
+      const response = await axios.get(`/api/tickets/export/excel?${params}`, {
+        responseType: 'blob'
+      })
+      
+      const url = window.URL.createObjectURL(new Blob([response.data]))
+      const link = document.createElement('a')
+      link.href = url
+      link.setAttribute('download', 'tickets_export.xlsx')
+      document.body.appendChild(link)
+      link.click()
+      link.remove()
+    } catch (error) {
+      console.error('Export error:', error)
+      alert('Failed to construct excel export')
+    }
+  }
+
   const getStatusBadge = (status) => {
     const classes = {
       'Open': 'badge-open',
@@ -46,6 +70,12 @@ const TicketList = () => {
     return <span className={classes[priority] || 'badge'}>{priority}</span>
   }
 
+  const isOverdue = (ticket) => {
+    if (!ticket.due_date) return false;
+    if (ticket.status === 'Resolved' || ticket.status === 'Closed') return false;
+    return new Date(ticket.due_date) < new Date();
+  }
+
   if (loading) {
     return (
       <div className="flex justify-center items-center h-64">
@@ -56,7 +86,15 @@ const TicketList = () => {
 
   return (
     <div>
-      <h1 className="text-3xl font-bold mb-6">All Tickets</h1>
+      <div className="flex justify-between items-center mb-6">
+        <h1 className="text-3xl font-bold">All Tickets</h1>
+        <button onClick={handleExport} className="btn bg-green-600 hover:bg-green-700 text-white shadow-sm flex items-center gap-2">
+          <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+            <path fillRule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm3.293-7.707a1 1 0 011.414 0L9 10.586V3a1 1 0 112 0v7.586l1.293-1.293a1 1 0 111.414 1.414l-3 3a1 1 0 01-1.414 0l-3-3a1 1 0 010-1.414z" clipRule="evenodd" />
+          </svg>
+          Export Excel
+        </button>
+      </div>
 
       {/* Filters */}
       <div className="card mb-6">
@@ -103,24 +141,27 @@ const TicketList = () => {
               <th className="px-4 py-3 text-left text-sm font-medium text-gray-500">Ticket ID</th>
               <th className="px-4 py-3 text-left text-sm font-medium text-gray-500">Title</th>
               <th className="px-4 py-3 text-left text-sm font-medium text-gray-500">From</th>
+              <th className="px-4 py-3 text-left text-sm font-medium text-gray-500">Category</th>
               <th className="px-4 py-3 text-left text-sm font-medium text-gray-500">Priority</th>
               <th className="px-4 py-3 text-left text-sm font-medium text-gray-500">Status</th>
               <th className="px-4 py-3 text-left text-sm font-medium text-gray-500">Assigned To</th>
-              <th className="px-4 py-3 text-left text-sm font-medium text-gray-500">Created</th>
+              <th className="px-4 py-3 text-left text-sm font-medium text-gray-500">Due Date</th>
               <th className="px-4 py-3 text-left text-sm font-medium text-gray-500">Action</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-200">
             {tickets.map((ticket) => (
-              <tr key={ticket.id} className="hover:bg-gray-50">
+              <tr key={ticket.id} className={`${isOverdue(ticket) ? 'bg-red-50 hover:bg-red-100' : 'hover:bg-gray-50'}`}>
                 <td className="px-4 py-3 text-sm font-medium">{ticket.ticket_id}</td>
                 <td className="px-4 py-3 text-sm">{ticket.issue_title}</td>
                 <td className="px-4 py-3 text-sm">{ticket.name}</td>
+                <td className="px-4 py-3 text-sm">{ticket.category_name || '-'}</td>
                 <td className="px-4 py-3">{getPriorityBadge(ticket.priority)}</td>
                 <td className="px-4 py-3">{getStatusBadge(ticket.status)}</td>
                 <td className="px-4 py-3 text-sm">{ticket.assigned_name || '-'}</td>
-                <td className="px-4 py-3 text-sm">
-                  {new Date(ticket.created_at).toLocaleDateString()}
+                <td className="px-4 py-3 text-sm font-medium text-gray-600">
+                  {ticket.due_date ? new Date(ticket.due_date).toLocaleDateString() : '-'}
+                  {isOverdue(ticket) && <span className="ml-2 text-red-600 text-xs truncate">(! Overdue)</span>}
                 </td>
                 <td className="px-4 py-3">
                   <Link

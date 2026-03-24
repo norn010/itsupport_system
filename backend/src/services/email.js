@@ -1,17 +1,25 @@
 import nodemailer from 'nodemailer';
 
-const transporter = nodemailer.createTransport({
-  host: process.env.EMAIL_HOST,
-  port: process.env.EMAIL_PORT,
-  secure: false,
-  auth: {
-    user: process.env.EMAIL_USER,
-    pass: process.env.EMAIL_PASS,
-  },
-});
+// Only create transporter if host is provided to prevent crashes
+let transporter = null;
+if (process.env.EMAIL_HOST && process.env.EMAIL_USER) {
+  transporter = nodemailer.createTransport({
+    host: process.env.EMAIL_HOST,
+    port: process.env.EMAIL_PORT || 587,
+    secure: process.env.EMAIL_PORT === '465',
+    auth: {
+      user: process.env.EMAIL_USER,
+      pass: process.env.EMAIL_PASS,
+    },
+  });
+}
 
 export const sendTicketNotification = async (ticket, type = 'created') => {
   try {
+    if (!transporter) {
+      console.log('Skipping email notification: EMAIL_HOST not configured.');
+      return;
+    }
     const subject = type === 'created' 
       ? `New IT Support Ticket: ${ticket.ticket_id}`
       : `Ticket Updated: ${ticket.ticket_id}`;
@@ -42,6 +50,8 @@ export const sendTicketNotification = async (ticket, type = 'created') => {
 
 export const sendMessageNotification = async (ticket, message, senderType) => {
   try {
+    if (!transporter) return;
+    
     if (senderType === 'user') {
       const html = `
         <h2>New Message from User</h2>

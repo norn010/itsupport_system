@@ -3,6 +3,8 @@ import { useParams, Link } from 'react-router-dom'
 import { io } from 'socket.io-client'
 import axios from 'axios'
 import { useAuth } from '../contexts/AuthContext'
+import InternalNotes from '../components/InternalNotes'
+import ActivityTimeline from '../components/ActivityTimeline'
 
 const TicketDetail = () => {
   const { id } = useParams()
@@ -145,6 +147,19 @@ const TicketDetail = () => {
     return <span className={classes[priority] || 'badge'}>{priority}</span>
   }
 
+  const getSlaBadge = (ticket) => {
+    if (!ticket.due_date) return null;
+    const dueDate = new Date(ticket.due_date);
+    const now = new Date();
+    if (ticket.status === 'Resolved' || ticket.status === 'Closed') {
+      return <span className="badge bg-green-500/10 text-green-700 border-green-200">SLA Met</span>;
+    }
+    if (now > dueDate) {
+      return <span className="badge bg-red-500/10 text-red-700 border-red-200 animate-pulse">SLA Overdue</span>;
+    }
+    return <span className="badge bg-indigo-500/10 text-indigo-700 border-indigo-200">In SLA</span>;
+  }
+
   if (loading) {
     return (
       <div className="flex justify-center items-center h-64">
@@ -205,14 +220,42 @@ const TicketDetail = () => {
                 </div>
               </div>
 
+              {(ticket.category_name || ticket.subcategory_name) && (
+                <div className="grid grid-cols-2 gap-4">
+                  {ticket.category_name && (
+                    <div>
+                      <label className="text-sm text-gray-500">Category</label>
+                      <p className="font-medium text-primary-700">{ticket.category_name}</p>
+                    </div>
+                  )}
+                  {ticket.subcategory_name && (
+                    <div>
+                      <label className="text-sm text-gray-500">Subcategory</label>
+                      <p className="font-medium text-primary-700">{ticket.subcategory_name}</p>
+                    </div>
+                  )}
+                </div>
+              )}
+
               <div>
                 <label className="text-sm text-gray-500">Description</label>
                 <p className="mt-1">{ticket.description || 'No description provided.'}</p>
               </div>
 
-              <div>
-                <label className="text-sm text-gray-500">Created</label>
-                <p>{new Date(ticket.created_at).toLocaleString()}</p>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="text-sm text-gray-500">Created At</label>
+                  <p>{new Date(ticket.created_at).toLocaleString()}</p>
+                </div>
+                {ticket.due_date && (
+                  <div>
+                    <label className="text-sm text-gray-500">Due Date</label>
+                    <div className="flex items-center gap-2 mt-1">
+                      <p className="font-semibold text-gray-700">{new Date(ticket.due_date).toLocaleString()}</p>
+                      {getSlaBadge(ticket)}
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
           </div>
@@ -282,6 +325,11 @@ const TicketDetail = () => {
               </div>
             </div>
           )}
+
+          {/* Extra Components */}
+          <InternalNotes ticketId={ticket.ticket_id} />
+          <ActivityTimeline ticketId={ticket.ticket_id} />
+
         </div>
 
         {/* Chat */}

@@ -10,6 +10,12 @@ import fs from 'fs';
 import authRoutes from './routes/auth.js';
 import ticketRoutes from './routes/tickets.js';
 import chatRoutes from './routes/chat.js';
+import categoryRoutes from './routes/categories.js';
+import noteRoutes from './routes/notes.js';
+import activityRoutes from './routes/activity.js';
+import knowledgeBaseRoutes from './routes/knowledgeBase.js';
+import feedbackRoutes from './routes/feedback.js';
+import notificationRoutes from './routes/notifications.js';
 import { ChatMessage } from './models/index.js';
 
 dotenv.config();
@@ -28,8 +34,8 @@ const io = new Server(httpServer, {
 
 // Middleware
 app.use(cors());
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
+app.use(express.json({ limit: '50mb' }));
+app.use(express.urlencoded({ limit: '50mb', extended: true }));
 
 // Ensure uploads directory exists
 const uploadDir = path.join(__dirname, '../uploads');
@@ -44,6 +50,12 @@ app.use('/uploads', express.static(uploadDir));
 app.use('/api/auth', authRoutes);
 app.use('/api/tickets', ticketRoutes);
 app.use('/api/tickets', chatRoutes);
+app.use('/api/tickets', noteRoutes);
+app.use('/api/tickets', activityRoutes);
+app.use('/api/tickets', feedbackRoutes);
+app.use('/api/categories', categoryRoutes);
+app.use('/api/kb', knowledgeBaseRoutes);
+app.use('/api/notifications', notificationRoutes);
 
 // Health check
 app.get('/api/health', (req, res) => {
@@ -62,6 +74,11 @@ io.on('connection', (socket) => {
   socket.on('leave_ticket', (ticketId) => {
     socket.leave(`ticket_${ticketId}`);
     console.log(`Socket ${socket.id} left ticket_${ticketId}`);
+  });
+
+  socket.on('register_user', (userId) => {
+    socket.join(`user_${userId}`);
+    console.log(`Socket ${socket.id} joined user_${userId}`);
   });
 
   socket.on('disconnect', () => {

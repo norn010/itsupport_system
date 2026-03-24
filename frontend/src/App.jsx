@@ -9,17 +9,20 @@ import Login from './pages/Login'
 import Dashboard from './pages/Dashboard'
 import TicketList from './pages/TicketList'
 import TicketDetail from './pages/TicketDetail'
+import KnowledgeBase from './pages/KnowledgeBase'
+import ManageArticles from './pages/ManageArticles'
 
 function App() {
   const { user } = useAuth()
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen">
       <Navbar />
       <Routes>
         {/* Public Routes */}
         <Route path="/" element={<CreateTicket />} />
         <Route path="/ticket/:id" element={<ViewTicket />} />
+        <Route path="/knowledge-base" element={<KnowledgeBase />} />
         
         {/* Admin Routes */}
         <Route path="/login" element={<Login />} />
@@ -36,6 +39,11 @@ function App() {
         <Route path="/admin/ticket/:id" element={
           <Layout requireAuth>
             <TicketDetail />
+          </Layout>
+        } />
+        <Route path="/admin/kb" element={
+          <Layout requireAuth>
+            <ManageArticles />
           </Layout>
         } />
       </Routes>
