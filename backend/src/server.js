@@ -16,6 +16,9 @@ import activityRoutes from './routes/activity.js';
 import knowledgeBaseRoutes from './routes/knowledgeBase.js';
 import feedbackRoutes from './routes/feedback.js';
 import notificationRoutes from './routes/notifications.js';
+import assetRoutes from './routes/assets.js';
+import licenseRoutes from './routes/licenses.js';
+import inventoryRoutes from './routes/inventory.js';
 import { ChatMessage } from './models/index.js';
 
 dotenv.config();
@@ -56,6 +59,11 @@ app.use('/api/tickets', feedbackRoutes);
 app.use('/api/categories', categoryRoutes);
 app.use('/api/kb', knowledgeBaseRoutes);
 app.use('/api/notifications', notificationRoutes);
+
+// ITAM Routes
+app.use('/api/assets', assetRoutes);
+app.use('/api/licenses', licenseRoutes);
+app.use('/api/inventory', inventoryRoutes);
 
 // Health check
 app.get('/api/health', (req, res) => {

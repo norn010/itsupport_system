@@ -1,13 +1,13 @@
 import pool from '../config/database.js';
 
 export const Ticket = {
-  async create({ ticket_id, name, department, issue_title, description, priority, category_id, subcategory_id, due_date }) {
+  async create({ ticket_id, name, department, issue_title, description, priority, category_id, subcategory_id, due_date, asset_id }) {
     const query = `
-      INSERT INTO tickets (ticket_id, name, department, issue_title, description, priority, category_id, subcategory_id, due_date)
+      INSERT INTO tickets (ticket_id, name, department, issue_title, description, priority, category_id, subcategory_id, due_date, asset_id)
       OUTPUT inserted.*
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
     `;
-    const values = [ticket_id, name, department, issue_title, description, priority, category_id || null, subcategory_id || null, due_date || null];
+    const values = [ticket_id, name, department, issue_title, description, priority, category_id || null, subcategory_id || null, due_date || null, asset_id || null];
     const result = await pool.query(query, values);
     return result.rows[0];
   },
@@ -61,12 +61,18 @@ export const Ticket = {
         c.name as category_name,
         sc.name as subcategory_name,
         f.rating as feedback_rating,
-        f.comment as feedback_comment
+        f.comment as feedback_comment,
+        a.asset_code as asset_code,
+        a.name as asset_name,
+        a.brand as asset_brand,
+        a.model as asset_model,
+        a.serial_number as asset_serial
       FROM tickets t
       LEFT JOIN users u ON t.assigned_to = u.id
       LEFT JOIN categories c ON t.category_id = c.id
       LEFT JOIN subcategories sc ON t.subcategory_id = sc.id
       LEFT JOIN ticket_feedback f ON t.ticket_id = f.ticket_id
+      LEFT JOIN assets a ON t.asset_id = a.id
       WHERE t.id = $1
     `;
     const result = await pool.query(query, [id]);
@@ -81,12 +87,18 @@ export const Ticket = {
         c.name as category_name,
         sc.name as subcategory_name,
         f.rating as feedback_rating,
-        f.comment as feedback_comment
+        f.comment as feedback_comment,
+        a.asset_code as asset_code,
+        a.name as asset_name,
+        a.brand as asset_brand,
+        a.model as asset_model,
+        a.serial_number as asset_serial
       FROM tickets t
       LEFT JOIN users u ON t.assigned_to = u.id
       LEFT JOIN categories c ON t.category_id = c.id
       LEFT JOIN subcategories sc ON t.subcategory_id = sc.id
       LEFT JOIN ticket_feedback f ON t.ticket_id = f.ticket_id
+      LEFT JOIN assets a ON t.asset_id = a.id
       WHERE t.ticket_id = $1
     `;
     const result = await pool.query(query, [ticketId]);
@@ -120,6 +132,12 @@ export const Ticket = {
 
     const result = await pool.query(query, values);
     return result.rows[0];
+  },
+
+  async getDepartments() {
+    const query = `SELECT DISTINCT department FROM tickets WHERE department IS NOT NULL AND department <> '' ORDER BY department ASC`;
+    const result = await pool.query(query);
+    return result.rows;
   },
 
   async getStats() {
@@ -235,7 +253,7 @@ export const User = {
   },
 
   async findAllITStaff() {
-    const query = `SELECT id, username, full_name, email FROM users WHERE role = 'IT'`;
+    const query = `SELECT id, username, full_name, role, email FROM users WHERE role IN ('IT', 'MANAGER')`;
     const result = await pool.query(query);
     return result.rows;
   }
@@ -252,6 +270,28 @@ export const Category = {
     const query = `SELECT * FROM subcategories WHERE category_id = $1 AND is_active = 1 ORDER BY name ASC`;
     const result = await pool.query(query, [categoryId]);
     return result.rows;
+  },
+
+  async findOrCreateByName(name) {
+    if (!name) return null;
+    const findQuery = `SELECT * FROM categories WHERE name = $1`;
+    const findResult = await pool.query(findQuery, [name]);
+    if (findResult.rows.length > 0) return findResult.rows[0];
+
+    const createQuery = `INSERT INTO categories (name) OUTPUT inserted.* VALUES ($1)`;
+    const createResult = await pool.query(createQuery, [name]);
+    return createResult.rows[0];
+  },
+
+  async findOrCreateSubcategoryByName(categoryId, name) {
+    if (!name || !categoryId) return null;
+    const findQuery = `SELECT * FROM subcategories WHERE category_id = $1 AND name = $2`;
+    const findResult = await pool.query(findQuery, [categoryId, name]);
+    if (findResult.rows.length > 0) return findResult.rows[0];
+
+    const createQuery = `INSERT INTO subcategories (category_id, name) OUTPUT inserted.* VALUES ($1, $2)`;
+    const createResult = await pool.query(createQuery, [categoryId, name]);
+    return createResult.rows[0];
   }
 };
 

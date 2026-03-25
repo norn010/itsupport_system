@@ -11,6 +11,7 @@ import {
   getITStaff,
   getStats,
   exportTicketsExcel,
+  getDepartments,
 } from '../controllers/tickets.js';
 import { authenticate, requireRole } from '../middleware/auth.js';
 
@@ -52,6 +53,7 @@ const createTicketLimiter = rateLimit({
 
 // Public routes
 router.post('/', createTicketLimiter, upload.array('images', 5), createTicket);
+router.get('/departments', getDepartments);
 router.get('/search/:id', getTicketById);
 
 // Protected routes

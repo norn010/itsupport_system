@@ -70,11 +70,7 @@ const TicketList = () => {
     return <span className={classes[priority] || 'badge'}>{priority}</span>
   }
 
-  const isOverdue = (ticket) => {
-    if (!ticket.due_date) return false;
-    if (ticket.status === 'Resolved' || ticket.status === 'Closed') return false;
-    return new Date(ticket.due_date) < new Date();
-  }
+
 
   if (loading) {
     return (
@@ -145,13 +141,13 @@ const TicketList = () => {
               <th className="px-4 py-3 text-left text-sm font-medium text-gray-500">Priority</th>
               <th className="px-4 py-3 text-left text-sm font-medium text-gray-500">Status</th>
               <th className="px-4 py-3 text-left text-sm font-medium text-gray-500">Assigned To</th>
-              <th className="px-4 py-3 text-left text-sm font-medium text-gray-500">Due Date</th>
+
               <th className="px-4 py-3 text-left text-sm font-medium text-gray-500">Action</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-200">
             {tickets.map((ticket) => (
-              <tr key={ticket.id} className={`${isOverdue(ticket) ? 'bg-red-50 hover:bg-red-100' : 'hover:bg-gray-50'}`}>
+              <tr key={ticket.id} className="hover:bg-gray-50">
                 <td className="px-4 py-3 text-sm font-medium">{ticket.ticket_id}</td>
                 <td className="px-4 py-3 text-sm">{ticket.issue_title}</td>
                 <td className="px-4 py-3 text-sm">{ticket.name}</td>
@@ -159,10 +155,7 @@ const TicketList = () => {
                 <td className="px-4 py-3">{getPriorityBadge(ticket.priority)}</td>
                 <td className="px-4 py-3">{getStatusBadge(ticket.status)}</td>
                 <td className="px-4 py-3 text-sm">{ticket.assigned_name || '-'}</td>
-                <td className="px-4 py-3 text-sm font-medium text-gray-600">
-                  {ticket.due_date ? new Date(ticket.due_date).toLocaleDateString() : '-'}
-                  {isOverdue(ticket) && <span className="ml-2 text-red-600 text-xs truncate">(! Overdue)</span>}
-                </td>
+
                 <td className="px-4 py-3">
                   <Link
                     to={`/admin/ticket/${ticket.ticket_id}`}

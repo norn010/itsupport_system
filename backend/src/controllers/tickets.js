@@ -16,15 +16,13 @@ const generateTicketId = () => {
 
 export const createTicket = async (req, res) => {
   try {
-    const { name, department, issue_title, description, priority, category_id, subcategory_id } = req.body;
+    const { name, department, issue_title, description, priority = 'Medium', category_id, subcategory_id, asset_id } = req.body;
 
-    if (!name || !issue_title || !priority) {
-      return res.status(400).json({ message: 'Name, issue title, and priority are required' });
+    if (!name || !issue_title) {
+      return res.status(400).json({ message: 'Name and issue title are required' });
     }
 
-    const slaHours = { Low: 72, Medium: 24, High: 4 };
-    const due_date = new Date();
-    due_date.setHours(due_date.getHours() + (slaHours[priority] || 24));
+    const due_date = null; // Still passing to model but setting as null as per user requirement to remove it
 
     const ticket_id = generateTicketId();
     const ticket = await Ticket.create({
@@ -36,7 +34,8 @@ export const createTicket = async (req, res) => {
       priority,
       category_id: category_id ? parseInt(category_id) : null,
       subcategory_id: subcategory_id ? parseInt(subcategory_id) : null,
-      due_date
+      due_date,
+      asset_id: asset_id ? parseInt(asset_id) : null
     });
 
     // Save images if uploaded
@@ -114,7 +113,7 @@ export const getTicketById = async (req, res) => {
 export const updateTicket = async (req, res) => {
   try {
     const { id } = req.params;
-    const { status, assigned_to, priority, category_id, subcategory_id } = req.body;
+    const { status, assigned_to, priority, category_id, subcategory_id, asset_id } = req.body;
 
     const ticket = await Ticket.findById(id);
     if (!ticket) {
@@ -125,8 +124,43 @@ export const updateTicket = async (req, res) => {
     if (status) updates.status = status;
     if (assigned_to !== undefined) updates.assigned_to = assigned_to || null;
     if (priority) updates.priority = priority;
-    if (category_id !== undefined) updates.category_id = category_id ? parseInt(category_id) : null;
-    if (subcategory_id !== undefined) updates.subcategory_id = subcategory_id ? parseInt(subcategory_id) : null;
+    
+    // Category management (combobox support)
+    const { category_name, subcategory_name } = req.body;
+    if (category_name !== undefined) {
+      if (!category_name) {
+        updates.category_id = null;
+        updates.subcategory_id = null;
+      } else {
+        const cat = await Category.findOrCreateByName(category_name);
+        updates.category_id = cat.id;
+        
+        if (subcategory_name !== undefined) {
+          if (!subcategory_name) {
+            updates.subcategory_id = null;
+          } else {
+            const sub = await Category.findOrCreateSubcategoryByName(cat.id, subcategory_name);
+            updates.subcategory_id = sub.id;
+          }
+        }
+      }
+    } else if (category_id !== undefined) {
+      updates.category_id = category_id ? parseInt(category_id) : null;
+    }
+
+    if (subcategory_name !== undefined && category_name === undefined) {
+      if (!subcategory_name) {
+        updates.subcategory_id = null;
+      } else if (ticket.category_id || updates.category_id) {
+        const catId = updates.category_id || ticket.category_id;
+        const sub = await Category.findOrCreateSubcategoryByName(catId, subcategory_name);
+        updates.subcategory_id = sub.id;
+      }
+    } else if (subcategory_id !== undefined && category_name === undefined) {
+      updates.subcategory_id = subcategory_id ? parseInt(subcategory_id) : null;
+    }
+
+    if (asset_id !== undefined) updates.asset_id = asset_id || null;
 
     if (status && status !== ticket.status) {
       updates.status = status;
@@ -145,6 +179,12 @@ export const updateTicket = async (req, res) => {
       updates.priority = priority;
       await logActivity(ticket.ticket_id, 'priority_changed', `Priority changed to ${priority}`, req.user);
     }
+    
+    if (asset_id !== undefined && asset_id !== ticket.asset_id) {
+      const action = asset_id ? 'asset_linked' : 'asset_unlinked';
+      const msg = asset_id ? 'Asset linked to ticket' : 'Asset link removed from ticket';
+      await logActivity(ticket.ticket_id, action, msg, req.user);
+    }
 
     if (status === 'Resolved' || status === 'Closed') {
       updates.resolved_at = new Date();
@@ -160,7 +200,7 @@ export const updateTicket = async (req, res) => {
 
     res.json({
       message: 'Ticket updated successfully',
-      ticket: updatedTicket,
+      ticket: await Ticket.findById(id),
     });
   } catch (error) {
     console.error('Update ticket error:', error);
@@ -174,6 +214,16 @@ export const getITStaff = async (req, res) => {
     res.json(staff);
   } catch (error) {
     console.error('Get IT staff error:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+};
+
+export const getDepartments = async (req, res) => {
+  try {
+    const departments = await Ticket.getDepartments();
+    res.json(departments);
+  } catch (error) {
+    console.error('Get departments error:', error);
     res.status(500).json({ message: 'Server error' });
   }
 };

@@ -12,7 +12,7 @@ const config = {
   options: {
     encrypt: false,
     trustServerCertificate: true,
-    // Removed instanceName to bypass Browser service lookup
+    useUTC: false, // Important for matching local system time
   },
   pool: {
     max: 10,

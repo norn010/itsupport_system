@@ -9,7 +9,9 @@ const Navbar = () => {
   const navigate = useNavigate()
   const [notifications, setNotifications] = useState([])
   const [showDropdown, setShowDropdown] = useState(false)
+  const [showAssetMenu, setShowAssetMenu] = useState(false)
   const dropdownRef = useRef(null)
+  const assetMenuRef = useRef(null)
   const socketRef = useRef(null)
 
   useEffect(() => {
@@ -18,15 +20,27 @@ const Navbar = () => {
     fetchNotifications()
 
     socketRef.current = io()
-    socketRef.current.emit('register_user', user.id)
+    
+    socketRef.current.on('connect', () => {
+      console.log('Socket connected, registering user:', user.id)
+      socketRef.current.emit('register_user', user.id)
+    })
+
+    socketRef.current.on('connect_error', (err) => {
+      console.error('Socket connection error:', err.message)
+    })
 
     socketRef.current.on('notification', (newNotif) => {
+      console.log('New notification received:', newNotif)
       setNotifications(prev => [newNotif, ...prev])
     })
 
     const handleClickOutside = (e) => {
       if (dropdownRef.current && !dropdownRef.current.contains(e.target)) {
         setShowDropdown(false)
+      }
+      if (assetMenuRef.current && !assetMenuRef.current.contains(e.target)) {
+        setShowAssetMenu(false)
       }
     }
     document.addEventListener('mousedown', handleClickOutside)
@@ -89,6 +103,7 @@ const Navbar = () => {
           <div className="flex items-center space-x-4">
             {user ? (
               <>
+                {/* Notification Bell */}
                 <div className="relative" ref={dropdownRef}>
                   <button 
                     onClick={() => setShowDropdown(!showDropdown)}
@@ -137,6 +152,44 @@ const Navbar = () => {
                 <span className="badge badge-primary-100 text-primary-800 mr-2">{user.role}</span>
                 <Link to="/dashboard" className="text-gray-600 hover:text-gray-900 font-medium mr-3">Dashboard</Link>
                 <Link to="/tickets" className="text-gray-600 hover:text-gray-900 font-medium mr-3">Tickets</Link>
+
+                {/* ITAM Dropdown Menu */}
+                <div className="relative" ref={assetMenuRef}>
+                  <button
+                    onClick={() => setShowAssetMenu(!showAssetMenu)}
+                    className="text-gray-600 hover:text-gray-900 font-medium mr-3 inline-flex items-center gap-1"
+                  >
+                    Assets
+                    <svg className={`w-3 h-3 transition-transform ${showAssetMenu ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
+                    </svg>
+                  </button>
+                  {showAssetMenu && (
+                    <div className="absolute right-0 mt-2 w-52 bg-white rounded-xl shadow-xl border border-gray-100 overflow-hidden z-50 py-1">
+                      <Link to="/assets/dashboard" onClick={() => setShowAssetMenu(false)}
+                        className="flex items-center gap-3 px-4 py-2.5 text-sm text-gray-700 hover:bg-primary-50 hover:text-primary-700 transition">
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path></svg>
+                        Asset Dashboard
+                      </Link>
+                      <Link to="/assets" onClick={() => setShowAssetMenu(false)}
+                        className="flex items-center gap-3 px-4 py-2.5 text-sm text-gray-700 hover:bg-primary-50 hover:text-primary-700 transition">
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"></path></svg>
+                        All Assets
+                      </Link>
+                      <Link to="/licenses" onClick={() => setShowAssetMenu(false)}
+                        className="flex items-center gap-3 px-4 py-2.5 text-sm text-gray-700 hover:bg-primary-50 hover:text-primary-700 transition">
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"></path></svg>
+                        Software Licenses
+                      </Link>
+                      <Link to="/inventory" onClick={() => setShowAssetMenu(false)}
+                        className="flex items-center gap-3 px-4 py-2.5 text-sm text-gray-700 hover:bg-primary-50 hover:text-primary-700 transition">
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4"></path></svg>
+                        Inventory & Stock
+                      </Link>
+                    </div>
+                  )}
+                </div>
+
                 <Link to="/admin/kb" className="text-gray-600 hover:text-gray-900 font-medium mr-3">Articles</Link>
                 <button onClick={handleLogout} className="btn-secondary text-sm px-4 py-1.5 focus:ring-2 focus:ring-offset-2 focus:ring-primary-500">Logout</button>
               </>

@@ -1,5 +1,6 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect, useRef } from 'react'
 import axios from 'axios'
+import { Link } from 'react-router-dom'
 
 const CreateTicket = () => {
   const [formData, setFormData] = useState({
@@ -10,36 +11,72 @@ const CreateTicket = () => {
     priority: 'Medium',
     category_id: '',
     subcategory_id: '',
+    asset_id: '',
   })
-  const [categories, setCategories] = useState([])
-  const [subcategories, setSubcategories] = useState([])
+  // Asset search state
+  const [assetSearch, setAssetSearch] = useState('')
+  const [assetResults, setAssetResults] = useState([])
+  const [selectedAsset, setSelectedAsset] = useState(null)
+  const [assetDropdownOpen, setAssetDropdownOpen] = useState(false)
+  const [assetSearching, setAssetSearching] = useState(false)
+  const assetSearchRef = useRef(null)
   const [files, setFiles] = useState([])
   const [previewUrls, setPreviewUrls] = useState([])
   const [loading, setLoading] = useState(false)
   const [success, setSuccess] = useState(null)
   const [error, setError] = useState(null)
+  const [existingDepartments, setExistingDepartments] = useState([])
 
   const handleChange = (e) => {
     const { name, value } = e.target
     setFormData(prev => ({ ...prev, [name]: value }))
-
-    if (name === 'category_id') {
-      setFormData(prev => ({ ...prev, subcategory_id: '' }))
-      if (value) {
-        axios.get(`/api/categories/${value}/subcategories`)
-          .then(res => setSubcategories(res.data))
-          .catch(err => console.error(err))
-      } else {
-        setSubcategories([])
-      }
-    }
   }
 
-  React.useEffect(() => {
-    axios.get('/api/categories')
-      .then(res => setCategories(res.data))
+  useEffect(() => {
+    axios.get('/api/tickets/departments')
+      .then(res => setExistingDepartments(res.data.map(d => d.department)))
       .catch(err => console.error(err))
   }, [])
+
+  // Close asset dropdown on outside click
+  useEffect(() => {
+    const handler = (e) => {
+      if (assetSearchRef.current && !assetSearchRef.current.contains(e.target)) {
+        setAssetDropdownOpen(false)
+      }
+    }
+    document.addEventListener('mousedown', handler)
+    return () => document.removeEventListener('mousedown', handler)
+  }, [])
+
+  // Debounced asset search
+  useEffect(() => {
+    if (!assetSearch.trim()) { setAssetResults([]); return }
+    const timer = setTimeout(async () => {
+      setAssetSearching(true)
+      try {
+        const res = await axios.get('/api/assets', { params: { search: assetSearch, limit: 10 } })
+        setAssetResults(res.data.assets || [])
+        setAssetDropdownOpen(true)
+      } catch { setAssetResults([]) }
+      finally { setAssetSearching(false) }
+    }, 350)
+    return () => clearTimeout(timer)
+  }, [assetSearch])
+
+  const handleSelectAsset = (asset) => {
+    setSelectedAsset(asset)
+    setFormData(prev => ({ ...prev, asset_id: asset.id }))
+    setAssetSearch(`${asset.asset_code} – ${asset.name}`)
+    setAssetDropdownOpen(false)
+  }
+
+  const handleClearAsset = () => {
+    setSelectedAsset(null)
+    setFormData(prev => ({ ...prev, asset_id: '' }))
+    setAssetSearch('')
+    setAssetResults([])
+  }
 
   const handleFileChange = (e) => {
     const selectedFiles = Array.from(e.target.files)
@@ -87,10 +124,14 @@ const CreateTicket = () => {
         priority: 'Medium',
         category_id: '',
         subcategory_id: '',
+        asset_id: '',
       })
       setSubcategories([])
       setFiles([])
       setPreviewUrls([])
+      setSelectedAsset(null)
+      setAssetSearch('')
+      setAssetResults([])
     } catch (err) {
       setError(err.response?.data?.message || 'Failed to create ticket')
     } finally {
@@ -122,8 +163,12 @@ const CreateTicket = () => {
   }
 
   return (
-    <div className="max-w-2xl mx-auto mt-8 p-6">
-      <div className="card">
+    <div className="max-w-3xl mx-auto px-4 py-8 animate-in fade-in duration-500">
+      <Link to="/" className="inline-flex items-center gap-2 text-slate-400 hover:text-primary-600 font-bold uppercase tracking-widest text-xs mb-8 transition-colors group">
+        <svg className="w-4 h-4 group-hover:-translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M10 19l-7-7m0 0l7-7m-7 7h18" /></svg>
+        Back to Hub
+      </Link>
+      <div className="card shadow-2xl border-primary-100 ring-4 ring-primary-50/50">
         <h1 className="text-2xl font-bold mb-6">Create IT Support Ticket</h1>
         
         {error && (
@@ -150,45 +195,21 @@ const CreateTicket = () => {
             <input
               type="text"
               name="department"
+              list="dept-list"
               value={formData.department}
               onChange={handleChange}
               className="input"
               placeholder="e.g., IT, HR, Sales"
+              autoComplete="off"
             />
+            <datalist id="dept-list">
+              {existingDepartments.map((dept, idx) => (
+                <option key={idx} value={dept} />
+              ))}
+            </datalist>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Category</label>
-              <select
-                name="category_id"
-                value={formData.category_id}
-                onChange={handleChange}
-                className="input"
-              >
-                <option value="">-- Select Category --</option>
-                {categories.map(c => (
-                  <option key={c.id} value={c.id}>{c.name}</option>
-                ))}
-              </select>
-            </div>
 
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Subcategory</label>
-              <select
-                name="subcategory_id"
-                value={formData.subcategory_id}
-                onChange={handleChange}
-                className="input"
-                disabled={!formData.category_id || subcategories.length === 0}
-              >
-                <option value="">-- Select Subcategory --</option>
-                {subcategories.map(sc => (
-                  <option key={sc.id} value={sc.id}>{sc.name}</option>
-                ))}
-              </select>
-            </div>
-          </div>
 
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Issue Title *</label>
@@ -215,18 +236,84 @@ const CreateTicket = () => {
             />
           </div>
 
+
+
+          {/* Asset Linking */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Priority *</label>
-            <select
-              name="priority"
-              value={formData.priority}
-              onChange={handleChange}
-              className="input"
-            >
-              <option value="Low">Low</option>
-              <option value="Medium">Medium</option>
-              <option value="High">High</option>
-            </select>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              🖥 Related Asset <span className="text-gray-400 font-normal">(optional)</span>
+            </label>
+            <div className="relative" ref={assetSearchRef}>
+              <div className="relative">
+                <input
+                  type="text"
+                  value={assetSearch}
+                  onChange={e => { setAssetSearch(e.target.value); setSelectedAsset(null); setFormData(p => ({...p, asset_id: ''})) }}
+                  placeholder="Search by name, asset code, or serial number..."
+                  className="input pr-16"
+                  autoComplete="off"
+                />
+                <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-1">
+                  {assetSearching && (
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-primary-500"></div>
+                  )}
+                  {selectedAsset && (
+                    <button type="button" onClick={handleClearAsset}
+                      className="text-gray-400 hover:text-red-500 text-xs font-bold px-1">✕</button>
+                  )}
+                </div>
+              </div>
+
+              {/* Dropdown results */}
+              {assetDropdownOpen && assetResults.length > 0 && (
+                <div className="absolute z-30 w-full mt-1 bg-white rounded-xl shadow-xl border border-slate-200 max-h-48 overflow-y-auto">
+                  {assetResults.map(a => (
+                    <button
+                      key={a.id}
+                      type="button"
+                      onClick={() => handleSelectAsset(a)}
+                      className="w-full flex items-center gap-3 px-4 py-2.5 hover:bg-primary-50 text-left transition"
+                    >
+                      <span className={`w-2 h-2 rounded-full flex-shrink-0 ${
+                        a.status === 'Available' ? 'bg-emerald-400'
+                        : a.status === 'In Use' ? 'bg-blue-400'
+                        : a.status === 'Repair' ? 'bg-amber-400' : 'bg-slate-300'
+                      }`}></span>
+                      <div className="min-w-0">
+                        <span className="font-mono text-xs text-primary-600 font-semibold mr-2">{a.asset_code}</span>
+                        <span className="text-sm text-slate-700">{a.name}</span>
+                        {a.brand && <span className="text-xs text-slate-400 ml-2">{a.brand} {a.model}</span>}
+                      </div>
+                      <span className="ml-auto text-xs text-slate-400 flex-shrink-0">{a.status}</span>
+                    </button>
+                  ))}
+                </div>
+              )}
+
+              {assetDropdownOpen && assetSearch.trim() && assetResults.length === 0 && !assetSearching && (
+                <div className="absolute z-30 w-full mt-1 bg-white rounded-xl shadow-xl border border-slate-200 px-4 py-3 text-sm text-slate-400">
+                  No assets found matching "{assetSearch}"
+                </div>
+              )}
+            </div>
+
+            {/* Selected asset preview */}
+            {selectedAsset && (
+              <div className="mt-2 flex items-center gap-3 p-3 bg-primary-50 border border-primary-200 rounded-lg">
+                <div className="w-8 h-8 rounded-lg bg-primary-100 flex items-center justify-center text-primary-600 text-sm font-bold flex-shrink-0">
+                  {selectedAsset.asset_code?.charAt(0)}
+                </div>
+                <div className="min-w-0">
+                  <p className="text-sm font-semibold text-primary-800">{selectedAsset.asset_code} – {selectedAsset.name}</p>
+                  <p className="text-xs text-primary-600">{[selectedAsset.brand, selectedAsset.model, selectedAsset.serial_number].filter(Boolean).join(' · ')}</p>
+                </div>
+                <span className={`ml-auto badge text-xs flex-shrink-0 ${
+                  selectedAsset.status === 'Available' ? 'bg-emerald-100 text-emerald-700 border-emerald-200'
+                  : selectedAsset.status === 'In Use' ? 'bg-blue-100 text-blue-700 border-blue-200'
+                  : 'bg-amber-100 text-amber-700 border-amber-200'
+                }`}>{selectedAsset.status}</span>
+              </div>
+            )}
           </div>
 
           <div>

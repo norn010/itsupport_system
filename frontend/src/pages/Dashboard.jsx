@@ -180,7 +180,7 @@ const Dashboard = () => {
         <h2 className="text-xl font-bold mb-4">Quick Actions</h2>
         <div className="flex gap-4">
           <Link to="/tickets" className="btn-primary">View All Tickets</Link>
-          <Link to="/" className="btn-secondary">Create New Ticket</Link>
+          <Link to="/create" className="btn-secondary">Create New Ticket</Link>
         </div>
       </div>
     </div>
