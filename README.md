@@ -4,12 +4,12 @@ A production-ready IT Support Ticket System with real-time chat, image uploads, 
 
 ## 🧱 Tech Stack
 
-- **Frontend**: React (Vite) + TailwindCSS + Axios + Chart.js
-- **Backend**: Node.js (Express) + Socket.io
-- **Database**: SQL Server
-- **File Upload**: Multer
-- **Email**: Nodemailer
-- **LINE Notify**: HTTP API
+- **Tech Stack**: React 18, Vite, Tailwind CSS, SQL Server, Node.js, Socket.io
+- **Real-time Engine**: Socket.io for chat and live status updates
+- **Audio Alerts**: Custom `.m4a` notifications for chat messages
+- **UI Architecture**: Standardized Searchable Comboboxes (iOS-stable absolute-layer pattern)
+- **Database Architecture**: Foreign-key consistency with auto-creation of missing metadata (Vendors, Locations)
+- **Security**: JWT-based RBAC (Manager / IT Staff / Public)
 
 ## 👤 User Roles
 
@@ -306,6 +306,10 @@ npm start
 - ✅ Maintenance Cost Summary
 - ✅ QR Code generation per asset
 - ✅ Role-based Security (Manager full / IT limited)
+- ✅ **New:** Standardized Searchable Comboboxes (iOS/Safari Compatible)
+- ✅ **New:** Smart "Auto-Learn" (Automatic Vendor/Location creation on-the-fly)
+- ✅ **New:** Real-time Audio Alerts for Chat messages (.m4a)
+- ✅ **New:** Copy Ticket Link with visual confirmation
 
 ## 🗄️ Database Tables
 
