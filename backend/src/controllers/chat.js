@@ -81,7 +81,7 @@ export const createMessage = async (req, res) => {
     // Send notifications for user messages
     if (sender_type === 'user') {
       await sendLineNotification(ticket, 'message');
-      await sendDiscordNotification(ticket, 'message', message || 'Sent an image');
+      await sendDiscordNotification(ticket, 'message', message || 'Sent an image', filePath);
       await sendMessageNotification(ticket, message || 'Sent an image', sender_type);
       
       const notifMsg = `${ticket.name} sent a new message in ${ticket.ticket_id}`;

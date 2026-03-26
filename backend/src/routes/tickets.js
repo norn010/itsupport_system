@@ -55,9 +55,9 @@ const createTicketLimiter = rateLimit({
 router.post('/', createTicketLimiter, upload.array('images', 5), createTicket);
 router.get('/departments', getDepartments);
 router.get('/search/:id', getTicketById);
+router.get('/', getTickets);
 
 // Protected routes
-router.get('/', authenticate, requireRole('IT', 'MANAGER'), getTickets);
 router.get('/export/excel', authenticate, requireRole('MANAGER', 'IT'), exportTicketsExcel);
 router.get('/stats/dashboard', authenticate, requireRole('MANAGER', 'IT'), getStats);
 router.get('/staff/it', authenticate, requireRole('IT', 'MANAGER'), getITStaff);

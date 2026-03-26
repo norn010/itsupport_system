@@ -14,6 +14,19 @@ const LicenseList = () => {
   const [assignData, setAssignData] = useState({ user_name: '', asset_id: '' })
   const [vendors, setVendors] = useState([])
   const [saving, setSaving] = useState(false)
+  const [venOpen, setVenOpen] = useState(false)
+  const [venSearch, setVenSearch] = useState('')
+
+  // Filter states
+  const [fVenOpen, setFVenOpen] = useState(false)
+  const [fVenSearch, setFVenSearch] = useState('')
+  const [searchQuery, setSearchQuery] = useState('')
+  const [vendorFilter, setVendorFilter] = useState('')
+
+  // Asset Assignment Search
+  const [assets, setAssets] = useState([])
+  const [asOpen, setAsOpen] = useState(false)
+  const [asSearch, setAsSearch] = useState('')
 
   const fetchLicenses = async () => {
     try {
@@ -26,6 +39,7 @@ const LicenseList = () => {
   useEffect(() => { fetchLicenses() }, [])
   useEffect(() => {
     axios.get('/api/assets/vendors').then(res => setVendors(res.data)).catch(() => {})
+    axios.get('/api/assets').then(res => setAssets(res.data.assets || [])).catch(() => {})
   }, [])
 
   const handleCreate = async (e) => {
@@ -35,6 +49,9 @@ const LicenseList = () => {
       await axios.post('/api/licenses', formData)
       setShowCreateModal(false)
       setFormData({ name: '', license_key: '', total_seats: 1, expiry_date: '', vendor_id: '', cost: '' })
+      setVenSearch('')
+      // Clear filters
+      setSearchQuery(''); setVendorFilter(''); setFVenSearch('');
       fetchLicenses()
     } catch (err) { alert(err.response?.data?.message || 'Error') }
     finally { setSaving(false) }
@@ -89,6 +106,52 @@ const LicenseList = () => {
         </button>
       </div>
 
+      {/* Filters */}
+      <div className="card mb-6 !p-4">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          <input
+            type="text"
+            placeholder="Search license name..."
+            className="input !py-2 text-sm"
+            value={searchQuery}
+            onChange={e => setSearchQuery(e.target.value)}
+          />
+          
+          {/* Vendor Filter Combobox */}
+          <div className="relative">
+            <div className="input-group">
+              <input 
+                className="input !py-2 text-sm pr-10" 
+                placeholder="All Vendors"
+                value={fVenSearch || (vendors.find(v => v.id == vendorFilter)?.name || '')}
+                onChange={e => { 
+                  const val = e.target.value;
+                  setFVenSearch(val); 
+                  setFVenOpen(true);
+                  const match = vendors.find(v => v.name.toLowerCase() === val.toLowerCase());
+                  if (match) setVendorFilter(match.id);
+                  else if (!val) setVendorFilter('');
+                }}
+                onFocus={() => { setFVenOpen(true) }}
+                autoComplete="off"
+              />
+              <svg className={`dropdown-icon transition-transform ${fVenOpen ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" /></svg>
+            </div>
+            {fVenOpen && (
+              <>
+                <div className="fixed inset-0 z-[60]" onClick={() => setFVenOpen(false)}></div>
+                <div className="absolute z-[70] w-full mt-1 bg-white rounded-xl shadow-xl border border-slate-200 max-h-40 overflow-y-auto animate-in slide-in-from-top-1">
+                  <button onClick={() => { setVendorFilter(''); setFVenSearch(''); setFVenOpen(false) }} className="w-full text-left px-4 py-2 hover:bg-slate-50 text-slate-700 text-sm font-medium border-b border-slate-50">All Vendors</button>
+                  {vendors.filter(v => v.name.toLowerCase().includes(fVenSearch.toLowerCase())).map(v => (
+                    <button key={v.id} onClick={() => { setVendorFilter(v.id); setFVenSearch(v.name); setFVenOpen(false) }} className="w-full text-left px-4 py-2 hover:bg-slate-50 text-slate-700 text-sm font-medium border-b border-slate-50 last:border-0">{v.name}</button>
+                  ))}
+                </div>
+              </>
+            )}
+          </div>
+        </div>
+      </div>
+
       <div className="card !p-0 overflow-hidden">
         {loading ? (
           <div className="flex justify-center items-center h-48">
@@ -110,7 +173,10 @@ const LicenseList = () => {
               </tr>
             </thead>
             <tbody>
-              {licenses.map(l => {
+              {licenses
+                .filter(l => l.name.toLowerCase().includes(searchQuery.toLowerCase()))
+                .filter(l => !vendorFilter || l.vendor_id == vendorFilter)
+                .map(l => {
                 const isExpiringSoon = l.expiry_date && new Date(l.expiry_date) <= new Date(Date.now() + 30*24*60*60*1000)
                 const seatsFull = l.used_seats >= l.total_seats
                 return (
@@ -170,12 +236,48 @@ const LicenseList = () => {
                   <label className="block text-sm font-medium text-slate-700 mb-1">Expiry Date</label>
                   <input type="date" className="input" value={formData.expiry_date} onChange={e => setFormData(p => ({...p, expiry_date: e.target.value}))} />
                 </div>
-                <div>
+                {/* Vendor Combobox */}
+                <div className="relative">
                   <label className="block text-sm font-medium text-slate-700 mb-1">Vendor</label>
-                  <select className="input" value={formData.vendor_id} onChange={e => setFormData(p => ({...p, vendor_id: e.target.value}))}>
-                    <option value="">Select</option>
-                    {vendors.map(v => <option key={v.id} value={v.id}>{v.name}</option>)}
-                  </select>
+                  <div className="input-group">
+                    <input 
+                      className="input pr-10" 
+                      placeholder="Search vendor..."
+                      value={venSearch || (vendors.find(v => v.id == formData.vendor_id)?.name || '')}
+                      onChange={e => { 
+                        const val = e.target.value;
+                        setVenSearch(val); 
+                        setVenOpen(true);
+                        const match = vendors.find(v => v.name.toLowerCase() === val.toLowerCase());
+                        if (match) setFormData(p => ({...p, vendor_id: match.id}));
+                        else if (!val) setFormData(p => ({...p, vendor_id: ''}));
+                      }}
+                      onFocus={() => { setVenOpen(true) }}
+                      autoComplete="off"
+                    />
+                    <svg className={`dropdown-icon transition-transform ${venOpen ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" /></svg>
+                  </div>
+                  {venOpen && (
+                    <>
+                      <div className="fixed inset-0 z-[60]" onClick={() => setVenOpen(false)}></div>
+                      <div className="absolute z-[70] w-full mt-1 bg-white rounded-xl shadow-xl border border-slate-200 max-h-40 overflow-y-auto animate-in slide-in-from-top-1">
+                        {vendors.filter(v => v.name.toLowerCase().includes(venSearch.toLowerCase())).map(v => (
+                          <button
+                            key={v.id}
+                            type="button"
+                            onClick={() => {
+                              setFormData(p => ({...p, vendor_id: v.id}));
+                              setVenSearch(v.name);
+                              setVenOpen(false);
+                            }}
+                            className="w-full text-left px-4 py-2 hover:bg-slate-50 text-slate-700 text-sm font-medium border-b border-slate-50 last:border-0"
+                          >
+                            {v.name}
+                          </button>
+                        ))}
+                      </div>
+                    </>
+                  )}
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-slate-700 mb-1">Cost</label>
@@ -211,11 +313,55 @@ const LicenseList = () => {
             <div className="p-6">
               {/* Assign Form */}
               {selectedLicense.used_seats < selectedLicense.total_seats && (
-                <form onSubmit={handleAssign} className="flex gap-3 mb-6 p-4 bg-slate-50 rounded-xl">
+                <form onSubmit={handleAssign} className="flex flex-col sm:flex-row gap-3 mb-6 p-4 bg-slate-50 rounded-xl relative">
                   <input className="input flex-1 !py-2" placeholder="User name" value={assignData.user_name}
                     onChange={e => setAssignData(p => ({...p, user_name: e.target.value}))} required />
-                  <input type="number" className="input w-28 !py-2" placeholder="Asset ID" value={assignData.asset_id}
-                    onChange={e => setAssignData(p => ({...p, asset_id: e.target.value}))} />
+                  
+                  {/* Asset Combobox in Assignment */}
+                  <div className="relative flex-1">
+                    <div className="input-group">
+                      <input 
+                        className="input !py-2 text-sm pr-10" 
+                        placeholder="Search Asset..."
+                        value={asSearch || (assets.find(a => a.id == assignData.asset_id)?.name || '')}
+                        onChange={e => { 
+                          const val = e.target.value;
+                          setAsSearch(val); 
+                          setAsOpen(true);
+                          const match = assets.find(a => a.name.toLowerCase() === val.toLowerCase() || a.asset_code.toLowerCase() === val.toLowerCase());
+                          if (match) setAssignData(p => ({...p, asset_id: match.id}));
+                          else if (!val) setAssignData(p => ({...p, asset_id: ''}));
+                        }}
+                        onFocus={() => { setAsOpen(true) }}
+                        autoComplete="off"
+                      />
+                      <svg className={`dropdown-icon transition-transform ${asOpen ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" /></svg>
+                    </div>
+                    {asOpen && (
+                      <>
+                        <div className="fixed inset-0 z-[60]" onClick={() => setAsOpen(false)}></div>
+                        <div className="absolute z-[70] w-full mt-1 bg-white rounded-xl shadow-xl border border-slate-200 max-h-40 overflow-y-auto animate-in slide-in-from-top-1">
+                          <button onClick={() => { setAssignData(p => ({...p, asset_id: ''})); setAsSearch(''); setAsOpen(false) }} className="w-full text-left px-4 py-2 hover:bg-slate-50 text-slate-700 text-sm font-medium border-b border-slate-50">None</button>
+                          {assets.filter(a => a.name.toLowerCase().includes(asSearch.toLowerCase()) || a.asset_code.toLowerCase().includes(asSearch.toLowerCase())).map(a => (
+                            <button
+                              key={a.id}
+                              type="button"
+                              onClick={() => {
+                                setAssignData(p => ({...p, asset_id: a.id}));
+                                setAsSearch(`${a.asset_code} - ${a.name}`);
+                                setAsOpen(false);
+                              }}
+                              className="w-full text-left px-4 py-2 hover:bg-slate-50 text-slate-700 text-sm font-medium border-b border-slate-50 last:border-0"
+                            >
+                              <div className="font-mono text-xs text-primary-600">{a.asset_code}</div>
+                              <div>{a.name}</div>
+                            </button>
+                          ))}
+                        </div>
+                      </>
+                    )}
+                  </div>
+
                   <button type="submit" className="btn-primary text-sm whitespace-nowrap">Assign</button>
                 </form>
               )}

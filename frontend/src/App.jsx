@@ -32,6 +32,7 @@ function App() {
         <Route path="/queue" element={<QueueTicket />} />
         <Route path="/ticket/:id" element={<ViewTicket />} />
         <Route path="/knowledge-base" element={<KnowledgeBase />} />
+        <Route path="/knowledge-base/:slug" element={<KnowledgeBase />} />
         
         {/* Admin Routes */}
         <Route path="/login" element={<Login />} />

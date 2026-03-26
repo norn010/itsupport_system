@@ -10,6 +10,24 @@ import {
   getLocations,
   getAssetStats
 } from '../controllers/assets.js';
+import multer from 'multer';
+import path from 'path';
+import { v4 as uuidv4 } from 'uuid';
+
+const storage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    cb(null, 'uploads/assets/');
+  },
+  filename: (req, file, cb) => {
+    const uniqueName = `asset-${uuidv4()}${path.extname(file.originalname)}`;
+    cb(null, uniqueName);
+  },
+});
+
+const upload = multer({
+  storage,
+  limits: { fileSize: 5 * 1024 * 1024 }, // 5MB
+});
 
 const router = Router();
 
@@ -29,9 +47,9 @@ router.get('/stats/dashboard', getAssetStats);
 
 // CRUD
 router.get('/', getAssets);
-router.post('/', createAsset);
+router.post('/', upload.single('image'), createAsset);
 router.get('/:id', getAssetById);
-router.put('/:id', updateAsset);
+router.put('/:id', upload.single('image'), updateAsset);
 router.delete('/:id', requireRole('MANAGER'), deleteAsset);
 
 // Assignment

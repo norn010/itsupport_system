@@ -26,6 +26,7 @@ const CreateTicket = () => {
   const [success, setSuccess] = useState(null)
   const [error, setError] = useState(null)
   const [existingDepartments, setExistingDepartments] = useState([])
+  const [deptDropdownOpen, setDeptDropdownOpen] = useState(false)
 
   const handleChange = (e) => {
     const { name, value } = e.target
@@ -190,23 +191,66 @@ const CreateTicket = () => {
             />
           </div>
 
-          <div>
+          {/* Department Searchable Dropdown */}
+          <div className="relative">
             <label className="block text-sm font-medium text-gray-700 mb-1">Department</label>
-            <input
-              type="text"
-              name="department"
-              list="dept-list"
-              value={formData.department}
-              onChange={handleChange}
-              className="input"
-              placeholder="e.g., IT, HR, Sales"
-              autoComplete="off"
-            />
-            <datalist id="dept-list">
-              {existingDepartments.map((dept, idx) => (
-                <option key={idx} value={dept} />
-              ))}
-            </datalist>
+            <div className="input-group">
+              <input
+                type="text"
+                name="department"
+                value={formData.department}
+                onChange={(e) => {
+                  setFormData(prev => ({ ...prev, department: e.target.value }));
+                  setDeptDropdownOpen(true);
+                }}
+                onFocus={() => setDeptDropdownOpen(true)}
+                className="input pr-10"
+                placeholder="e.g., IT, HR, Sales"
+                autoComplete="off"
+              />
+              <svg className={`dropdown-icon transition-transform ${deptDropdownOpen ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" /></svg>
+            </div>
+            
+            {/* Custom Dropdown for Department */}
+            {deptDropdownOpen && (
+              <>
+                <div className="fixed inset-0 z-20" onClick={() => setDeptDropdownOpen(false)}></div>
+                <div className="absolute z-30 w-full mt-1 bg-white rounded-xl shadow-xl border border-slate-200 max-h-48 overflow-y-auto animate-in slide-in-from-top-1 duration-200">
+                  {(() => {
+                    const uniqueDepts = Array.from(new Set(existingDepartments));
+                    const filtered = uniqueDepts.filter(d => 
+                      d.toLowerCase().includes(formData.department.toLowerCase())
+                    );
+                    
+                    if (filtered.length > 0) {
+                      return filtered.map((dept, idx) => (
+                        <button
+                          key={idx}
+                          type="button"
+                          onClick={() => {
+                            setFormData(prev => ({ ...prev, department: dept }));
+                            setDeptDropdownOpen(false);
+                          }}
+                          className="w-full text-left px-4 py-2.5 hover:bg-slate-50 transition-colors text-slate-700 text-sm font-medium border-b border-slate-50 last:border-0"
+                        >
+                          {dept}
+                        </button>
+                      ));
+                    }
+                    
+                    if (formData.department) {
+                      return (
+                        <div className="px-4 py-3 text-xs text-slate-400 italic">
+                          No matching department (you can still use "{formData.department}")
+                        </div>
+                      );
+                    }
+
+                    return null;
+                  })()}
+                </div>
+              </>
+            )}
           </div>
 
 

@@ -7,16 +7,16 @@ export const Asset = {
   async create(data) {
     const query = `
       INSERT INTO assets (asset_code, name, category_id, subcategory_id, brand, model, serial_number,
-        purchase_date, warranty_expiry, cost, vendor_id, status, location_id, assigned_to, description)
+        purchase_date, warranty_expiry, cost, vendor_id, status, location_id, assigned_to, description, image_url)
       OUTPUT inserted.*
-      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15)
+      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16)
     `;
     const values = [
       data.asset_code, data.name, data.category_id || null, data.subcategory_id || null,
       data.brand || null, data.model || null, data.serial_number || null,
       data.purchase_date || null, data.warranty_expiry || null, data.cost || null,
       data.vendor_id || null, data.status || 'Available', data.location_id || null,
-      data.assigned_to || null, data.description || null
+      data.assigned_to || null, data.description || null, data.image_url || null
     ];
     const result = await pool.query(query, values);
     return result.rows[0];
@@ -102,13 +102,17 @@ export const Asset = {
     const values = [];
     let p = 0;
     const allowed = ['name','category_id','subcategory_id','brand','model','serial_number',
-      'purchase_date','warranty_expiry','cost','vendor_id','status','location_id','assigned_to','description'];
+      'purchase_date','warranty_expiry','cost','vendor_id','status','location_id','assigned_to','description','image_url'];
 
     Object.keys(updates).forEach(key => {
       if (allowed.includes(key) && updates[key] !== undefined) {
         p++;
         fields.push(`${key} = $${p}`);
-        values.push(updates[key]);
+        let val = updates[key];
+        // Convert empty strings to null for ID columns to avoid FK issues ('' becomes 0 in SQL Server)
+        const idColumns = ['category_id', 'subcategory_id', 'vendor_id', 'location_id', 'assigned_to'];
+        if (idColumns.includes(key) && val === '') val = null;
+        values.push(val);
       }
     });
     if (fields.length === 0) return null;
@@ -328,13 +332,17 @@ export const Vendor = {
     const result = await pool.query(`SELECT * FROM vendors WHERE is_active = 1 ORDER BY name`);
     return result.rows;
   },
+  async findByName(name) {
+    const result = await pool.query(`SELECT * FROM vendors WHERE LOWER(name) = LOWER($1)`, [name.trim()]);
+    return result.rows[0];
+  },
   async create(data) {
     const query = `
-      INSERT INTO vendors (name, contact_person, email, phone, address)
+      INSERT INTO vendors (name, contact_person, email, phone, address, is_active)
       OUTPUT inserted.*
-      VALUES ($1,$2,$3,$4,$5)
+      VALUES ($1,$2,$3,$4,$5, 1)
     `;
-    const result = await pool.query(query, [data.name, data.contact_person || null, data.email || null, data.phone || null, data.address || null]);
+    const result = await pool.query(query, [data.name.trim(), data.contact_person || null, data.email || null, data.phone || null, data.address || null]);
     return result.rows[0];
   }
 };
@@ -346,6 +354,19 @@ export const Location = {
   async findAll() {
     const result = await pool.query(`SELECT * FROM locations WHERE is_active = 1 ORDER BY name`);
     return result.rows;
+  },
+  async findByName(name) {
+    const result = await pool.query(`SELECT * FROM locations WHERE LOWER(name) = LOWER($1)`, [name.trim()]);
+    return result.rows[0];
+  },
+  async create(data) {
+    const query = `
+      INSERT INTO locations (name, type, is_active)
+      OUTPUT inserted.*
+      VALUES ($1, $2, 1)
+    `;
+    const result = await pool.query(query, [data.name.trim(), data.type || 'office']);
+    return result.rows[0];
   }
 };
 
@@ -397,7 +418,10 @@ export const SoftwareLicense = {
       if (allowed.includes(key) && updates[key] !== undefined) {
         p++;
         fields.push(`${key} = $${p}`);
-        values.push(updates[key]);
+        let val = updates[key];
+        const idColumns = ['vendor_id', 'location_id', 'category_id'];
+        if (idColumns.includes(key) && val === '') val = null;
+        values.push(val);
       }
     });
     if (fields.length === 0) return null;
@@ -494,7 +518,10 @@ export const InventoryItem = {
       if (allowed.includes(key) && updates[key] !== undefined) {
         p++;
         fields.push(`${key} = $${p}`);
-        values.push(updates[key]);
+        let val = updates[key];
+        const idColumns = ['location_id', 'vendor_id', 'category_id']; // InventoryItem mostly uses location_id
+        if (idColumns.includes(key) && val === '') val = null;
+        values.push(val);
       }
     });
     if (fields.length === 0) return null;

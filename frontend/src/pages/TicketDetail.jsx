@@ -5,6 +5,7 @@ import axios from 'axios'
 import { useAuth } from '../contexts/AuthContext'
 import InternalNotes from '../components/InternalNotes'
 import ActivityTimeline from '../components/ActivityTimeline'
+import notificationSound from '../sound/notification_message-notification-alert-8-331718.m4a'
 
 const TicketDetail = () => {
   const { id } = useParams()
@@ -12,6 +13,7 @@ const TicketDetail = () => {
   const [ticket, setTicket] = useState(null)
   const [messages, setMessages] = useState([])
   const [newMessage, setNewMessage] = useState('')
+  const [copied, setCopied] = useState(false)
   const [previewImage, setPreviewImage] = useState(null)
   const [selectedFile, setSelectedFile] = useState(null)
   const [staff, setStaff] = useState([])
@@ -33,6 +35,8 @@ const TicketDetail = () => {
   const [subcategories, setSubcategories] = useState([])
   const [catName, setCatName] = useState('')
   const [subCatName, setSubCatName] = useState('')
+  const [catDropdownOpen, setCatDropdownOpen] = useState(false)
+  const [subCatDropdownOpen, setSubCatDropdownOpen] = useState(false)
   const assetSearchRef = useRef(null)
 
   const handlePaste = (e) => {
@@ -46,15 +50,31 @@ const TicketDetail = () => {
   }
 
   const handleSelectedFile = (file) => {
-    if (file) {
-      setSelectedFile(file);
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setPreviewImage(reader.result);
-      };
-      reader.readAsDataURL(file);
-    }
+    if (!file) return
+    setSelectedFile(file)
+    setPreviewImage(URL.createObjectURL(file))
   }
+
+  const renderMessage = (text) => {
+    if (!text) return null;
+    const urlRegex = /(https?:\/\/[^\s]+)/g;
+    return text.split(urlRegex).map((part, i) => {
+      if (part.match(urlRegex)) {
+        return (
+          <a
+            key={i}
+            href={part}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="underline hover:opacity-80 transition-opacity break-all font-bold italic"
+          >
+            {part}
+          </a>
+        );
+      }
+      return part;
+    });
+  };
 
   const handleSendMessage = async (e) => {
     e.preventDefault()
@@ -123,6 +143,10 @@ const TicketDetail = () => {
     
     socketRef.current.on('new_message', (message) => {
       setMessages(prev => [...prev, message])
+      if (message.sender_type === 'user') {
+        const audio = new Audio(notificationSound);
+        audio.play().catch(e => console.log('Audio error:', e));
+      }
     })
 
     return () => {
@@ -173,6 +197,12 @@ const TicketDetail = () => {
     } catch (error) {
       console.error('Error updating ticket:', error)
     }
+  }
+
+  const handleCopyLink = () => {
+    navigator.clipboard.writeText(window.location.href)
+    setCopied(true)
+    setTimeout(() => setCopied(false), 2000)
   }
 
   // ── Asset linking ────────────────────────────────────────────
@@ -278,10 +308,33 @@ const TicketDetail = () => {
           </div>
           <p className="text-slate-500 font-medium text-lg">{ticket.issue_title}</p>
         </div>
-        <div className="flex items-center gap-3">
-          <Link to="/tickets" className="btn-secondary flex items-center gap-2 px-4 py-2 text-sm">
+        <div className="flex items-center gap-2 sm:gap-3">
+          <button 
+            onClick={handleCopyLink}
+            className={`flex items-center gap-2 px-3 sm:px-4 py-2 rounded-xl text-xs sm:text-sm font-bold transition-all border ${
+              copied 
+              ? 'bg-emerald-500 text-white border-emerald-500 shadow-lg shadow-emerald-200' 
+              : 'bg-white text-slate-600 border-slate-200 hover:border-primary-500 hover:text-primary-600'
+            }`}
+          >
+            {copied ? (
+              <>
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M5 13l4 4L19 7" /></svg>
+                <span className="hidden xs:inline">Copied!</span>
+                <span className="xs:hidden">✓</span>
+              </>
+            ) : (
+              <>
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3" /></svg>
+                <span className="hidden xs:inline">Copy Link</span>
+                <span className="xs:hidden">Link</span>
+              </>
+            )}
+          </button>
+          <Link to="/tickets" className="btn-secondary flex items-center gap-2 px-3 sm:px-4 py-2 text-xs sm:text-sm">
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path></svg>
-            Back to List
+            <span className="hidden xs:inline">Back to List</span>
+            <span className="xs:hidden">Back</span>
           </Link>
         </div>
       </div>
@@ -299,7 +352,7 @@ const TicketDetail = () => {
               <h2 className="font-bold text-slate-800">Issue Description</h2>
             </div>
             <div className="p-6 prose prose-slate max-w-none text-slate-700 leading-relaxed min-h-[120px] whitespace-pre-wrap text-base">
-              {ticket.description || 'No description provided.'}
+              {ticket.description ? renderMessage(ticket.description) : 'No description provided.'}
             </div>
           </div>
 
@@ -369,7 +422,7 @@ const TicketDetail = () => {
                             <img src={msg.file_path} alt="Chat attachment" className="w-full h-auto max-h-80 object-cover" />
                           </div>
                         )}
-                        {msg.message && <p className="text-[15px] leading-relaxed font-medium">{msg.message}</p>}
+                        {msg.message && <div className="text-[15px] leading-relaxed font-medium whitespace-pre-wrap">{renderMessage(msg.message)}</div>}
                       </div>
                     </div>
                   ))}
@@ -473,44 +526,96 @@ const TicketDetail = () => {
 
               <div className="pt-6 border-t border-slate-100">
                 <label className="block text-xs font-bold text-slate-400 uppercase tracking-widest ml-1 mb-3">Classification</label>
-                <div className="space-y-3">
-                  <div className="space-y-1">
-                    <input 
-                      list="category-list"
-                      placeholder="Select or type Category"
-                      value={catName} 
-                      onChange={(e) => setCatName(e.target.value)}
-                      onBlur={(e) => {
-                        const val = e.target.value;
-                        if (val !== (ticket.category_name || '')) {
-                          handleUpdateTicket({ category_name: val });
-                        }
-                      }}
-                      className="input py-2.5 bg-slate-50 text-slate-700 border-slate-100 focus:bg-white transition-colors rounded-lg text-sm w-full"
-                    />
-                    <datalist id="category-list">
-                      {categories.map(c => <option key={c.id} value={c.name} />)}
-                    </datalist>
+                <div className="space-y-4">
+                  {/* Category Dropdown */}
+                  <div className="space-y-1 relative">
+                    <div className="input-group">
+                      <input 
+                        placeholder="Type or select Category"
+                        value={catName} 
+                        onChange={(e) => {
+                          setCatName(e.target.value);
+                          setCatDropdownOpen(true);
+                        }}
+                        onFocus={() => setCatDropdownOpen(true)}
+                        onBlur={(e) => {
+                          const val = e.target.value;
+                          if (val !== (ticket.category_name || '')) {
+                            handleUpdateTicket({ category_name: val });
+                          }
+                        }}
+                        className="input py-2.5 bg-slate-50 text-slate-700 border-slate-100 focus:bg-white transition-colors rounded-lg text-sm w-full pr-10"
+                      />
+                      <svg className={`dropdown-icon w-4 h-4 right-3 transition-transform ${catDropdownOpen ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" /></svg>
+                    </div>
+
+                    {catDropdownOpen && (
+                      <>
+                        <div className="fixed inset-0 z-20" onClick={() => setCatDropdownOpen(false)}></div>
+                        <div className="absolute z-30 w-full mt-1 bg-white rounded-xl shadow-xl border border-slate-200 max-h-40 overflow-y-auto animate-in slide-in-from-top-1">
+                          {categories.filter(c => c.name.toLowerCase().includes(catName.toLowerCase())).map(c => (
+                            <button
+                              key={c.id}
+                              type="button"
+                              onClick={() => {
+                                setCatName(c.name);
+                                setCatDropdownOpen(false);
+                                handleUpdateTicket({ category_name: c.name });
+                              }}
+                              className="w-full text-left px-4 py-2 hover:bg-slate-50 text-slate-700 text-xs font-bold border-b border-slate-50 last:border-0"
+                            >
+                              {c.name}
+                            </button>
+                          ))}
+                        </div>
+                      </>
+                    )}
                   </div>
 
-                  <div className="space-y-1">
-                    <input 
-                      list="subcategory-list"
-                      placeholder="Select or type Subcategory"
-                      value={subCatName} 
-                      onChange={(e) => setSubCatName(e.target.value)}
-                      onBlur={(e) => {
-                        const val = e.target.value;
-                        if (val !== (ticket.subcategory_name || '')) {
-                          handleUpdateTicket({ subcategory_name: val });
-                        }
-                      }}
-                      className="input py-2.5 bg-slate-50 text-slate-700 border-slate-100 focus:bg-white transition-colors rounded-lg text-sm w-full"
-                      disabled={!ticket.category_id && !catName}
-                    />
-                    <datalist id="subcategory-list">
-                      {subcategories.map(sc => <option key={sc.id} value={sc.name} />)}
-                    </datalist>
+                  {/* Subcategory Dropdown */}
+                  <div className="space-y-1 relative">
+                    <div className="input-group">
+                      <input 
+                        placeholder="Type or select Subcategory"
+                        value={subCatName} 
+                        onChange={(e) => {
+                          setSubCatName(e.target.value);
+                          setSubCatDropdownOpen(true);
+                        }}
+                        onFocus={() => setSubCatDropdownOpen(true)}
+                        onBlur={(e) => {
+                          const val = e.target.value;
+                          if (val !== (ticket.subcategory_name || '')) {
+                            handleUpdateTicket({ subcategory_name: val });
+                          }
+                        }}
+                        className="input py-2.5 bg-slate-50 text-slate-700 border-slate-100 focus:bg-white transition-colors rounded-lg text-sm w-full pr-10"
+                        disabled={!ticket.category_id && !catName}
+                      />
+                      <svg className={`dropdown-icon w-4 h-4 right-3 transition-transform ${subCatDropdownOpen ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" /></svg>
+                    </div>
+
+                    {subCatDropdownOpen && (
+                      <>
+                        <div className="fixed inset-0 z-20" onClick={() => setSubCatDropdownOpen(false)}></div>
+                        <div className="absolute z-30 w-full mt-1 bg-white rounded-xl shadow-xl border border-slate-200 max-h-40 overflow-y-auto animate-in slide-in-from-top-1">
+                          {subcategories.filter(sc => sc.name.toLowerCase().includes(subCatName.toLowerCase())).map(sc => (
+                            <button
+                              key={sc.id}
+                              type="button"
+                              onClick={() => {
+                                setSubCatName(sc.name);
+                                setSubCatDropdownOpen(false);
+                                handleUpdateTicket({ subcategory_name: sc.name });
+                              }}
+                              className="w-full text-left px-4 py-2 hover:bg-slate-50 text-slate-700 text-xs font-bold border-b border-slate-50 last:border-0"
+                            >
+                              {sc.name}
+                            </button>
+                          ))}
+                        </div>
+                      </>
+                    )}
                   </div>
                 </div>
               </div>

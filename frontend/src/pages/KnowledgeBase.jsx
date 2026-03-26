@@ -1,14 +1,23 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
-import { Link } from 'react-router-dom';
+import { Link, useParams, useNavigate } from 'react-router-dom';
 
 const KnowledgeBase = () => {
+  const { slug } = useParams();
+  const navigate = useNavigate();
   const [articles, setArticles] = useState([]);
   const [categories, setCategories] = useState([]);
   const [search, setSearch] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('');
   const [loading, setLoading] = useState(true);
   const [activeArticle, setActiveArticle] = useState(null);
+  const [copied, setCopied] = useState(false);
+
+  const handleCopyLink = () => {
+    navigator.clipboard.writeText(window.location.href);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
 
   useEffect(() => {
     fetchCategories();
@@ -17,6 +26,14 @@ const KnowledgeBase = () => {
   useEffect(() => {
     fetchArticles();
   }, [search, selectedCategory]);
+
+  useEffect(() => {
+    if (slug) {
+      readArticle(slug);
+    } else {
+      setActiveArticle(null);
+    }
+  }, [slug]);
 
   const fetchCategories = async () => {
     try {
@@ -42,22 +59,26 @@ const KnowledgeBase = () => {
     }
   };
 
-  const readArticle = async (slug) => {
+  const readArticle = async (articleSlug) => {
     try {
-      const { data } = await axios.get(`/api/kb/slug/${slug}`);
+      const { data } = await axios.get(`/api/kb/slug/${articleSlug}`);
       setActiveArticle(data);
+      if (window.location.pathname !== `/knowledge-base/${articleSlug}`) {
+        navigate(`/knowledge-base/${articleSlug}`);
+      }
       window.scrollTo(0, 0);
     } catch (error) {
       console.error('Read article error:', error);
+      navigate('/knowledge-base');
     }
   };
 
   if (activeArticle) {
     return (
-      <div className="max-w-4xl mx-auto py-8">
+      <div className="max-w-4xl mx-auto py-8 px-4">
         <button 
-          onClick={() => setActiveArticle(null)}
-          className="mb-6 flex items-center text-primary-600 hover:text-primary-800 transition"
+          onClick={() => navigate('/knowledge-base')}
+          className="mb-6 flex items-center text-primary-600 hover:text-primary-800 transition font-bold"
         >
           <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-1" viewBox="0 0 20 20" fill="currentColor">
             <path fillRule="evenodd" d="M9.707 16.707a1 1 0 01-1.414 0l-6-6a1 1 0 010-1.414l6-6a1 1 0 011.414 1.414L5.414 9H17a1 1 0 110 2H5.414l4.293 4.293a1 1 0 010 1.414z" clipRule="evenodd" />
@@ -66,10 +87,10 @@ const KnowledgeBase = () => {
         </button>
 
         <div className="card">
-          <div className="mb-6 flex items-start justify-between">
+          <div className="mb-6 flex flex-col sm:flex-row items-start justify-between gap-4">
             <div>
               <h1 className="text-3xl font-bold text-gray-900 mb-2">{activeArticle.title}</h1>
-              <div className="flex items-center gap-4 text-sm text-gray-500">
+              <div className="flex flex-wrap items-center gap-4 text-sm text-gray-500">
                 {activeArticle.category_name && (
                   <span className="bg-primary-50 text-primary-700 px-2 py-0.5 rounded text-xs font-semibold">
                     {activeArticle.category_name}
@@ -80,6 +101,26 @@ const KnowledgeBase = () => {
                 <span>{new Date(activeArticle.updated_at || activeArticle.created_at).toLocaleDateString()}</span>
               </div>
             </div>
+            <button 
+              onClick={handleCopyLink}
+              className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-bold transition-all border ${
+                copied 
+                ? 'bg-emerald-500 text-white border-emerald-500 shadow-lg shadow-emerald-200' 
+                : 'bg-white text-slate-600 border-slate-200 hover:border-primary-500 hover:text-primary-600 hover:shadow-lg'
+              }`}
+            >
+              {copied ? (
+                <>
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M5 13l4 4L19 7" /></svg>
+                  Copied!
+                </>
+              ) : (
+                <>
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3" /></svg>
+                  Copy Link
+                </>
+              )}
+            </button>
           </div>
           <hr className="my-6 border-gray-100" />
           <div 

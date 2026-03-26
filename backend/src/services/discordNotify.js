@@ -1,13 +1,21 @@
 import axios from 'axios';
 
-export const sendDiscordNotification = async (ticket, type = 'created', extraText = '') => {
+export const sendDiscordNotification = async (ticket, type = 'created', extraText = '', imageUrl = null) => {
   try {
     const webhookUrl = process.env.DISCORD_WEBHOOK_URL;
     if (!webhookUrl) return;
 
     let content = '';
     let color = 3447003; // Blue
-    const clientUrl = process.env.CLIENT_URL || 'http://localhost:5173';
+    const rawClientUrl = process.env.CLIENT_URL || 'http://localhost:5173';
+    // Remove trailing slash for consistent joining
+    const clientUrl = rawClientUrl.endsWith('/') ? rawClientUrl.slice(0, -1) : rawClientUrl;
+
+    // Use CLIENT_URL but point to backend port ONLY IF it's localhost
+    let baseUrl = clientUrl;
+    if (clientUrl.includes('localhost') || clientUrl.includes('127.0.0.1')) {
+      baseUrl = clientUrl.replace(':5173', ':5000'); 
+    }
 
     if (type === 'created') {
       content = '🚨 **New Support Ticket Required Attention** 🚨';
@@ -46,6 +54,14 @@ export const sendDiscordNotification = async (ticket, type = 'created', extraTex
         text: 'Enterprise IT Support System'
       }
     };
+
+    if (imageUrl) {
+      // Ensure the URL is absolute and correctly formatted
+      const cleanImageUrl = imageUrl.startsWith('/') ? imageUrl : `/${imageUrl}`;
+      const absoluteImageUrl = imageUrl.startsWith('http') ? imageUrl : `${baseUrl}${cleanImageUrl}`;
+      embed.image = { url: absoluteImageUrl };
+      console.log('Sending Discord notification with image URL:', absoluteImageUrl);
+    }
 
     const payload = {
       content,

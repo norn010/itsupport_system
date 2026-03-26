@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react'
 import { useParams } from 'react-router-dom'
 import { io } from 'socket.io-client'
 import axios from 'axios'
+import notificationSound from '../sound/notification_message-notification-alert-8-331718.m4a'
 
 const ViewTicket = () => {
   const { id } = useParams()
@@ -35,6 +36,10 @@ const ViewTicket = () => {
     
     socketRef.current.on('new_message', (message) => {
       setMessages(prev => [...prev, message])
+      if (message.sender_type === 'staff') {
+        const audio = new Audio(notificationSound);
+        audio.play().catch(e => console.log('Audio error:', e));
+      }
     })
 
     socketRef.current.on('ticket_updated', (updatedTicket) => {

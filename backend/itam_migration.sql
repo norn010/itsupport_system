@@ -79,6 +79,7 @@ BEGIN
         location_id INT NULL FOREIGN KEY REFERENCES locations(id),
         assigned_to INT NULL FOREIGN KEY REFERENCES users(id),
         description NVARCHAR(MAX) NULL,
+        image_url NVARCHAR(500) NULL,
         created_at DATETIME DEFAULT GETDATE(),
         updated_at DATETIME DEFAULT GETDATE()
     );
@@ -252,6 +253,12 @@ BEGIN
         ('Finance Department', 'department'),
         ('Server Room', 'room'),
         ('Store Room', 'room');
+END;
+
+-- 13. Safety: Ensure image_url column exists for existing tables
+IF COL_LENGTH('dbo.assets', 'image_url') IS NULL
+BEGIN
+    ALTER TABLE assets ADD image_url NVARCHAR(500) NULL;
 END;
 
 PRINT 'ITAM Migration completed successfully.';

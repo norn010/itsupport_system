@@ -46,9 +46,10 @@ export const createTicket = async (req, res) => {
     }
 
     // Send notifications
+    const firstImageUrl = req.files && req.files.length > 0 ? `/uploads/${req.files[0].filename}` : null;
     await sendTicketNotification(ticket, 'created');
     await sendLineNotification(ticket, 'created');
-    await sendDiscordNotification(ticket, 'created');
+    await sendDiscordNotification(ticket, 'created', '', firstImageUrl);
     await notifyAllITStaff('new_ticket', 'New Ticket Received', `A new ticket ${ticket.ticket_id} needs attention.`, ticket.ticket_id);
 
     // Log activity

@@ -1,26 +1,54 @@
 import { Asset, AssetAssignment, AssetLog, AssetMaintenance, AssetCategory, Vendor, Location, TicketAsset } from '../models/assetModels.js';
 import { createSystemNotification, notifyAllITStaff } from './notifications.js';
+import fs from 'fs';
+
+// Ensure asset uploads directory exists
+const assetDir = 'uploads/assets';
+if (!fs.existsSync(assetDir)) {
+  fs.mkdirSync(assetDir, { recursive: true });
+}
 
 // Helper: log asset activity
-const logAssetAction = async (assetId, actionType, description, reqUser) => {
-  await AssetLog.create({
-    asset_id: assetId,
-    action_type: actionType,
-    description,
-    actor_id: reqUser?.id || null,
-    actor_name: reqUser?.full_name || reqUser?.username || 'System',
-    actor_role: reqUser?.role || null
-  });
+const logAssetAction = async (assetId, actionType, description, actor) => {
+  try {
+    await AssetLog.create({
+      asset_id: assetId,
+      action_type: actionType,
+      description,
+      actor_id: actor?.id,
+      actor_name: actor?.full_name || actor?.username || 'System',
+      actor_role: actor?.role || null
+    });
+  } catch (err) { console.error('Log error:', err); }
+};
+
+const resolveIds = async (data) => {
+  if (!data.vendor_id && data.vendor_name && data.vendor_name.trim()) {
+    let v = await Vendor.findByName(data.vendor_name);
+    if (!v) v = await Vendor.create({ name: data.vendor_name });
+    data.vendor_id = v.id;
+  }
+  if (!data.location_id && data.location_name && data.location_name.trim()) {
+    let l = await Location.findByName(data.location_name);
+    if (!l) l = await Location.create({ name: data.location_name });
+    data.location_id = l.id;
+  }
 };
 
 // ==================== ASSET CRUD ====================
 
 export const createAsset = async (req, res) => {
   try {
+    await resolveIds(req.body);
     const data = req.body;
     if (!data.name) return res.status(400).json({ message: 'Asset name is required' });
 
     data.asset_code = await Asset.getNextCode();
+    
+    if (req.file) {
+      data.image_url = `/uploads/assets/${req.file.filename}`;
+    }
+
     const asset = await Asset.create(data);
 
     await logAssetAction(asset.id, 'created', `Asset ${asset.asset_code} created`, req.user);
@@ -76,6 +104,7 @@ export const updateAsset = async (req, res) => {
       }
     }
 
+    await resolveIds(req.body);
     const updates = req.body;
     const changes = [];
 
@@ -84,6 +113,10 @@ export const updateAsset = async (req, res) => {
     }
     if (updates.location_id && updates.location_id !== asset.location_id) {
       changes.push(`Location changed`);
+    }
+
+    if (req.file) {
+      updates.image_url = `/uploads/assets/${req.file.filename}`;
     }
 
     const updated = await Asset.update(req.params.id, updates);
