@@ -55,17 +55,22 @@ cd itsupport_system
 2. **Setup Backend**:
 ```bash
 cd backend
+# 1. Create .env from example (then edit with your DB/Email credentials)
 cp .env.example .env
-# Edit .env with your database and email credentials
+
+# 2. Install dependencies
 npm install
 npm run init-db
+
+# 3. COMPLETE DATABASE SETUP (ONE COMMAND - Tables, Migrations, Seeds)
+node src/config/init-db.js
+
+# 4. Start Server
 npm run dev
 ```
 
-3. **Run ITAM Migration** (in SQL Server Management Studio):
-```
-Execute backend/itam_migration.sql against your database
-```
+> [!NOTE]
+> The \`node src/config/init-db.js\` command now automatically handles ALL migrations (including V2 and ITAM). No manual SQL execution is required!
 
 4. **Setup Frontend** (in a new terminal):
 ```bash
@@ -285,6 +290,9 @@ npm start
 - ✅ **Enterprise V2:** In-app Notification System
 - ✅ **Enterprise V2:** Customer Feedback & Rating System
 - ✅ **Enterprise V2:** Knowledge Base System
+- ✅ **New:** Detailed Activity Logging (Captures User IP, Browser, Device, OS)
+- ✅ **New:** Manual Computer Name / PC Name field (with Auto-fill memory)
+- ✅ **New:** "Recent Tickets" list on Home Page for easy tracking
 
 ### IT Asset Management (ITAM) 🆕
 - ✅ Asset Master Registry (CRUD with auto-generated codes)
