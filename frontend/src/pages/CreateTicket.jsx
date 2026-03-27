@@ -39,7 +39,7 @@ const CreateTicket = () => {
     axios.get('/api/tickets/departments')
       .then(res => setExistingDepartments(res.data.map(d => d.department)))
       .catch(err => console.error(err))
-    
+
     // Load saved computer name
     const savedComp = localStorage.getItem('last_computer_name');
     if (savedComp) setComputerName(savedComp);
@@ -92,7 +92,7 @@ const CreateTicket = () => {
       return
     }
     setFiles(selectedFiles)
-    
+
     const urls = selectedFiles.map(file => URL.createObjectURL(file))
     setPreviewUrls(urls)
   }
@@ -117,11 +117,11 @@ const CreateTicket = () => {
       files.forEach(file => {
         data.append('images', file)
       })
-      
+
       localStorage.setItem('last_computer_name', computerName);
       const metadata = getBrowserMetadata(selectedAsset);
       if (computerName) metadata.comp_name = computerName;
-      
+
       data.append('metadata', JSON.stringify(metadata));
 
       const response = await axios.post('/api/tickets', data, {
@@ -165,7 +165,7 @@ const CreateTicket = () => {
           <a href={`/ticket/${success.ticket_id}`} className="btn-primary inline-block">
             View Ticket
           </a>
-          <button 
+          <button
             onClick={() => setSuccess(null)}
             className="btn-secondary ml-2"
           >
@@ -184,7 +184,7 @@ const CreateTicket = () => {
       </Link>
       <div className="card shadow-2xl border-primary-100 ring-4 ring-primary-50/50">
         <h1 className="text-2xl font-bold mb-6">Create IT Support Ticket</h1>
-        
+
         {error && (
           <div className="bg-red-50 text-red-700 p-4 rounded-lg mb-4">
             {error}
@@ -223,7 +223,7 @@ const CreateTicket = () => {
               />
               <svg className={`dropdown-icon transition-transform ${deptDropdownOpen ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" /></svg>
             </div>
-            
+
             {/* Custom Dropdown for Department */}
             {deptDropdownOpen && (
               <>
@@ -231,10 +231,10 @@ const CreateTicket = () => {
                 <div className="absolute z-30 w-full mt-1 bg-white rounded-xl shadow-xl border border-slate-200 max-h-48 overflow-y-auto animate-in slide-in-from-top-1 duration-200">
                   {(() => {
                     const uniqueDepts = Array.from(new Set(existingDepartments));
-                    const filtered = uniqueDepts.filter(d => 
+                    const filtered = uniqueDepts.filter(d =>
                       d.toLowerCase().includes(formData.department.toLowerCase())
                     );
-                    
+
                     if (filtered.length > 0) {
                       return filtered.map((dept, idx) => (
                         <button
@@ -250,7 +250,7 @@ const CreateTicket = () => {
                         </button>
                       ));
                     }
-                    
+
                     if (formData.department) {
                       return (
                         <div className="px-4 py-3 text-xs text-slate-400 italic">
@@ -266,7 +266,7 @@ const CreateTicket = () => {
             )}
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {/* <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Computer Name / PC Name</label>
               <input
@@ -278,7 +278,7 @@ const CreateTicket = () => {
               />
               <p className="text-[10px] text-gray-400 mt-1 italic">ระบบจะจดจำค่านี้ไว้ใช้ในครั้งถัดไป</p>
             </div>
-          </div>
+          </div> */}
 
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Issue Title *</label>
@@ -317,7 +317,7 @@ const CreateTicket = () => {
                 <input
                   type="text"
                   value={assetSearch}
-                  onChange={e => { setAssetSearch(e.target.value); setSelectedAsset(null); setFormData(p => ({...p, asset_id: ''})) }}
+                  onChange={e => { setAssetSearch(e.target.value); setSelectedAsset(null); setFormData(p => ({ ...p, asset_id: '' })) }}
                   placeholder="Search by name, asset code, or serial number..."
                   className="input pr-16"
                   autoComplete="off"
@@ -343,11 +343,10 @@ const CreateTicket = () => {
                       onClick={() => handleSelectAsset(a)}
                       className="w-full flex items-center gap-3 px-4 py-2.5 hover:bg-primary-50 text-left transition"
                     >
-                      <span className={`w-2 h-2 rounded-full flex-shrink-0 ${
-                        a.status === 'Available' ? 'bg-emerald-400'
-                        : a.status === 'In Use' ? 'bg-blue-400'
-                        : a.status === 'Repair' ? 'bg-amber-400' : 'bg-slate-300'
-                      }`}></span>
+                      <span className={`w-2 h-2 rounded-full flex-shrink-0 ${a.status === 'Available' ? 'bg-emerald-400'
+                          : a.status === 'In Use' ? 'bg-blue-400'
+                            : a.status === 'Repair' ? 'bg-amber-400' : 'bg-slate-300'
+                        }`}></span>
                       <div className="min-w-0">
                         <span className="font-mono text-xs text-primary-600 font-semibold mr-2">{a.asset_code}</span>
                         <span className="text-sm text-slate-700">{a.name}</span>
@@ -376,11 +375,10 @@ const CreateTicket = () => {
                   <p className="text-sm font-semibold text-primary-800">{selectedAsset.asset_code} – {selectedAsset.name}</p>
                   <p className="text-xs text-primary-600">{[selectedAsset.brand, selectedAsset.model, selectedAsset.serial_number].filter(Boolean).join(' · ')}</p>
                 </div>
-                <span className={`ml-auto badge text-xs flex-shrink-0 ${
-                  selectedAsset.status === 'Available' ? 'bg-emerald-100 text-emerald-700 border-emerald-200'
-                  : selectedAsset.status === 'In Use' ? 'bg-blue-100 text-blue-700 border-blue-200'
-                  : 'bg-amber-100 text-amber-700 border-amber-200'
-                }`}>{selectedAsset.status}</span>
+                <span className={`ml-auto badge text-xs flex-shrink-0 ${selectedAsset.status === 'Available' ? 'bg-emerald-100 text-emerald-700 border-emerald-200'
+                    : selectedAsset.status === 'In Use' ? 'bg-blue-100 text-blue-700 border-blue-200'
+                      : 'bg-amber-100 text-amber-700 border-amber-200'
+                  }`}>{selectedAsset.status}</span>
               </div>
             )}
           </div>
