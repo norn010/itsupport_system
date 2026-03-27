@@ -110,7 +110,7 @@ const Dashboard = () => {
     <div>
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-3xl font-bold">Dashboard</h1>
-        <span className="text-gray-500">Welcome, {user?.full_name}</span>
+        <span className="text-slate-500 dark:text-slate-400">Welcome, {user?.full_name}</span>
       </div>
 
       {/* Stats Cards */}
@@ -134,41 +134,41 @@ const Dashboard = () => {
       </div>
 
       <div className="grid grid-cols-2 md:grid-cols-3 gap-4 mb-8">
-        <div className="card text-center bg-green-50/50 p-4 border border-green-100">
-          <p className="text-3xl font-bold text-green-600">{slaStats.met || 0}</p>
-          <p className="text-green-800 text-sm font-medium">SLA Met & Resolved</p>
+        <div className="card text-center bg-green-50/50 dark:bg-green-900/20 p-4 border border-green-100 dark:border-green-900/30">
+          <p className="text-3xl font-bold text-green-600 dark:text-green-400">{slaStats.met || 0}</p>
+          <p className="text-green-800 dark:text-green-300 text-sm font-medium">SLA Met & Resolved</p>
         </div>
-        <div className="card text-center bg-red-50/50 p-4 border border-red-100">
-          <p className="text-3xl font-bold text-red-600">{slaStats.missed || 0}</p>
-          <p className="text-red-800 text-sm font-medium">SLA Missed & Resolved</p>
+        <div className="card text-center bg-red-50/50 dark:bg-red-900/20 p-4 border border-red-100 dark:border-red-900/30">
+          <p className="text-3xl font-bold text-red-600 dark:text-red-400">{slaStats.missed || 0}</p>
+          <p className="text-red-800 dark:text-red-300 text-sm font-medium">SLA Missed & Resolved</p>
         </div>
-        <div className="card text-center bg-yellow-50/50 p-4 border border-yellow-100">
-          <p className="text-3xl font-bold text-yellow-600 animate-pulse">{slaStats.overdue_active || 0}</p>
-          <p className="text-yellow-800 text-sm font-medium">Active & Overdue</p>
+        <div className="card text-center bg-yellow-50/50 dark:bg-yellow-900/20 p-4 border border-yellow-100 dark:border-yellow-900/30">
+          <p className="text-3xl font-bold text-yellow-600 dark:text-yellow-400 animate-pulse">{slaStats.overdue_active || 0}</p>
+          <p className="text-yellow-800 dark:text-yellow-300 text-sm font-medium">Active & Overdue</p>
         </div>
       </div>
 
       {/* Charts */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
         <div className="card">
-          <h2 className="text-xl font-bold mb-4 text-gray-800">Tickets per Day (Last 30 Days)</h2>
+          <h2 className="text-xl font-bold mb-4 text-slate-800 dark:text-slate-200">Tickets per Day (Last 30 Days)</h2>
           <Bar data={dailyChartData} options={{ responsive: true, plugins: { legend: { display: false } } }} />
         </div>
 
         <div className="card">
-          <h2 className="text-xl font-bold mb-4 text-gray-800">Tickets per Staff</h2>
+          <h2 className="text-xl font-bold mb-4 text-slate-800 dark:text-slate-200">Tickets per Staff</h2>
           <Bar data={staffChartData} options={{ responsive: true, plugins: { legend: { display: false } } }} />
         </div>
         
         <div className="card flex flex-col items-center">
-          <h2 className="text-xl font-bold mb-4 w-full text-left text-gray-800">Tickets by Category</h2>
+          <h2 className="text-xl font-bold mb-4 w-full text-left text-slate-800 dark:text-slate-200">Tickets by Category</h2>
           <div className="w-1/2">
             <Pie data={categoryChartData} options={{ responsive: true }} />
           </div>
         </div>
 
         <div className="card flex flex-col items-center">
-          <h2 className="text-xl font-bold mb-4 w-full text-left text-gray-800">SLA Performance</h2>
+          <h2 className="text-xl font-bold mb-4 w-full text-left text-slate-800 dark:text-slate-200">SLA Performance</h2>
           <div className="w-1/2">
             <Doughnut data={slaChartData} options={{ responsive: true }} />
           </div>

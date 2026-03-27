@@ -1,11 +1,13 @@
 import React, { useState, useEffect, useRef } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
+import { useTheme } from '../contexts/ThemeContext'
 import axios from 'axios'
 import { io } from 'socket.io-client'
 
 const Navbar = () => {
   const { user, logout } = useAuth()
+  const { darkMode, toggleDarkMode } = useTheme()
   const navigate = useNavigate()
   const [notifications, setNotifications] = useState([])
   const [showDropdown, setShowDropdown] = useState(false)
@@ -143,8 +145,21 @@ const Navbar = () => {
                 {/* User Info (Desktop only) */}
                 <div className="hidden sm:flex flex-col items-end mr-2">
                   <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">{user.role}</span>
-                  <span className="text-sm font-semibold text-slate-700 truncate max-w-[120px]">{user.full_name || user.username}</span>
+                  <span className="text-sm font-semibold text-slate-700 truncate max-w-[120px] dark:text-slate-200">{user.full_name || user.username}</span>
                 </div>
+
+                {/* Dark Mode Toggle */}
+                <button 
+                  onClick={toggleDarkMode} 
+                  className="p-2 text-slate-400 hover:text-primary-600 hover:bg-slate-50 dark:hover:bg-slate-800 rounded-full transition"
+                  title={darkMode ? "Switch to Light Mode" : "Switch to Dark Mode"}
+                >
+                  {darkMode ? (
+                    <svg className="w-6 h-6 text-yellow-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 3v1m0 16v1m9-9h1M4 12H3m15.364-6.364l-.707.707M6.343 17.657l-.707.707m12.728 0l-.707-.707M6.343 6.343l-.707-.707m12.728 0A9 9 0 115.636 5.636m12.728 12.728L12 12"></path></svg>
+                  ) : (
+                    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"></path></svg>
+                  )}
+                </button>
 
                 {/* Notification Bell */}
                 <div className="relative" ref={dropdownRef}>
@@ -244,6 +259,16 @@ const Navbar = () => {
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12"></path>
                 </svg>
               </button>
+            </div>
+
+            <div className="p-4 border-b border-slate-100 flex justify-between items-center bg-slate-50 dark:bg-slate-900/50">
+               <span className="text-xs font-bold text-slate-400 uppercase tracking-widest">Theme Mode</span>
+               <button 
+                onClick={toggleDarkMode}
+                className={`relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${darkMode ? 'bg-primary-600' : 'bg-slate-200'}`}
+               >
+                 <span className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${darkMode ? 'translate-x-5' : 'translate-x-0'}`} />
+               </button>
             </div>
             
             {/* Nav Links */}
