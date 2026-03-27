@@ -25,6 +25,9 @@ const ViewTicket = () => {
   const [feedbackRating, setFeedbackRating] = useState(0)
   const [feedbackComment, setFeedbackComment] = useState('')
   const [submittingFeedback, setSubmittingFeedback] = useState(false)
+  const [isTyping, setIsTyping] = useState(false)
+  const [typingUser, setTypingUser] = useState('')
+  const typingTimeoutRef = useRef(null)
 
   useEffect(() => {
     fetchTicket()
@@ -51,6 +54,16 @@ const ViewTicket = () => {
         feedback_rating: prev.feedback_rating,
         feedback_comment: prev.feedback_comment
       }))
+    })
+
+    socketRef.current.on('typing', ({ userName }) => {
+      setTypingUser(userName)
+      setIsTyping(true)
+    })
+
+    socketRef.current.on('stop_typing', () => {
+      setIsTyping(false)
+      setTypingUser('')
     })
 
     return () => {
@@ -104,6 +117,10 @@ const ViewTicket = () => {
     e.preventDefault()
     if (!newMessage.trim() && !selectedFile) return
     setSending(true)
+
+    // Stop typing immediately when sending
+    if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current)
+    socketRef.current.emit('stop_typing', { ticketId: ticket.id })
 
     const senderName = senderNameRef.current || 'User'
     
@@ -334,6 +351,16 @@ const ViewTicket = () => {
               </div>
             ))
           )}
+          {isTyping && (
+            <div className="flex items-center gap-2 mb-3 text-xs text-gray-500 italic animate-pulse">
+              <div className="flex gap-1">
+                <span className="w-1 h-1 bg-gray-400 rounded-full animate-bounce"></span>
+                <span className="w-1 h-1 bg-gray-400 rounded-full animate-bounce [animation-delay:0.2s]"></span>
+                <span className="w-1 h-1 bg-gray-400 rounded-full animate-bounce [animation-delay:0.4s]"></span>
+              </div>
+              {typingUser} is typing...
+            </div>
+          )}
           <div ref={messagesEndRef} />
         </div>
 
@@ -365,7 +392,22 @@ const ViewTicket = () => {
               id="chat-message-input"
               type="text"
               value={newMessage}
-              onChange={(e) => setNewMessage(e.target.value)}
+              onChange={(e) => {
+                setNewMessage(e.target.value)
+                
+                // Typing Indicator logic
+                if (socketRef.current) {
+                  socketRef.current.emit('typing', { 
+                    ticketId: ticket.id, 
+                    userName: senderNameRef.current || 'User' 
+                  })
+                  
+                  if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current)
+                  typingTimeoutRef.current = setTimeout(() => {
+                    socketRef.current.emit('stop_typing', { ticketId: ticket.id })
+                  }, 3000)
+                }
+              }}
               onPaste={handlePaste}
               placeholder="Type your message or paste an image..."
               className="input w-full pr-10"

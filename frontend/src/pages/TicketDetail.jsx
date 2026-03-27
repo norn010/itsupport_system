@@ -22,6 +22,9 @@ const TicketDetail = () => {
   const [selectedImage, setSelectedImage] = useState(null)
   const fileInputRef = useRef(null)
   const messagesEndRef = useRef(null)
+  const [isTyping, setIsTyping] = useState(false)
+  const [typingUser, setTypingUser] = useState('')
+  const typingTimeoutRef = useRef(null)
   const socketRef = useRef(null)
 
   // Asset linking state
@@ -80,6 +83,10 @@ const TicketDetail = () => {
     e.preventDefault()
     if (!newMessage.trim() && !selectedFile) return
     setSending(true)
+
+    // Stop typing immediately when sending
+    if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current)
+    socketRef.current.emit('stop_typing', { ticketId: ticket.id })
 
     try {
       const formData = new FormData();
@@ -147,6 +154,16 @@ const TicketDetail = () => {
         const audio = new Audio(notificationSound);
         audio.play().catch(e => console.log('Audio error:', e));
       }
+    })
+
+    socketRef.current.on('typing', ({ userName }) => {
+      setTypingUser(userName)
+      setIsTyping(true)
+    })
+
+    socketRef.current.on('stop_typing', () => {
+      setIsTyping(false)
+      setTypingUser('')
     })
 
     return () => {
@@ -426,6 +443,16 @@ const TicketDetail = () => {
                       </div>
                     </div>
                   ))}
+                  {isTyping && (
+                    <div className="flex items-center gap-2 mb-3 text-xs text-gray-500 italic animate-pulse">
+                      <div className="flex gap-1">
+                        <span className="w-1 h-1 bg-gray-400 rounded-full animate-bounce"></span>
+                        <span className="w-1 h-1 bg-gray-400 rounded-full animate-bounce [animation-delay:0.2s]"></span>
+                        <span className="w-1 h-1 bg-gray-400 rounded-full animate-bounce [animation-delay:0.4s]"></span>
+                      </div>
+                      {typingUser} is typing...
+                    </div>
+                  )}
                   <div ref={messagesEndRef} />
                 </div>
               )}
@@ -444,7 +471,22 @@ const TicketDetail = () => {
                   <input 
                     type="text" 
                     value={newMessage} 
-                    onChange={(e) => setNewMessage(e.target.value)} 
+                    onChange={(e) => {
+                      setNewMessage(e.target.value)
+                      
+                      // Typing Indicator logic
+                      if (socketRef.current) {
+                        socketRef.current.emit('typing', { 
+                          ticketId: ticket.id, 
+                          userName: user.full_name || 'Staff' 
+                        })
+                        
+                        if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current)
+                        typingTimeoutRef.current = setTimeout(() => {
+                          socketRef.current.emit('stop_typing', { ticketId: ticket.id })
+                        }, 3000)
+                      }
+                    }} 
                     onPaste={handlePaste} 
                     placeholder="Write a message to the user..." 
                     className="input w-full pr-14 py-3.5 bg-slate-50 border-slate-200 focus:bg-white focus:ring-4 focus:ring-indigo-50 focus:border-indigo-300 transition-all rounded-2xl text-base shadow-sm"

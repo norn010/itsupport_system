@@ -89,6 +89,14 @@ io.on('connection', (socket) => {
     console.log(`Socket ${socket.id} joined user_${userId}`);
   });
 
+  socket.on('typing', ({ ticketId, userName }) => {
+    socket.to(`ticket_${ticketId}`).emit('typing', { userName });
+  });
+
+  socket.on('stop_typing', ({ ticketId }) => {
+    socket.to(`ticket_${ticketId}`).emit('stop_typing');
+  });
+
   socket.on('disconnect', () => {
     console.log('Client disconnected:', socket.id);
   });
