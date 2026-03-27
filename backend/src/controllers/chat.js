@@ -3,6 +3,7 @@ import { sendLineNotification } from '../services/lineNotify.js';
 import { sendDiscordNotification } from '../services/discordNotify.js';
 import { sendMessageNotification } from '../services/email.js';
 import { createSystemNotification, notifyAllITStaff } from './notifications.js';
+import { logActivity } from '../services/activityLogger.js';
 import { io } from '../server.js';
 import multer from 'multer';
 import path from 'path';
@@ -92,6 +93,11 @@ export const createMessage = async (req, res) => {
         await notifyAllITStaff('new_message', 'New Message (Unassigned)', notifMsg, ticket.ticket_id);
       }
     }
+
+    // Log activity
+    const metadata = req.body.metadata ? JSON.parse(req.body.metadata) : {};
+    metadata.ip_address = req.ip || req.headers['x-forwarded-for'] || req.socket.remoteAddress;
+    await logActivity(ticket.ticket_id, 'message_sent', `New message sent by ${sender_name || (sender_type === 'staff' ? req.user?.full_name : 'User')}`, req.user, metadata);
 
     // Emit socket event for real-time update
     io.to(`ticket_${id}`).emit('new_message', chatMessage);

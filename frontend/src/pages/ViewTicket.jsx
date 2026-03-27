@@ -3,6 +3,8 @@ import { useParams } from 'react-router-dom'
 import { io } from 'socket.io-client'
 import axios from 'axios'
 import notificationSound from '../sound/notification_message-notification-alert-8-331718.m4a'
+import { saveRecentTicket } from '../utils/ticketStorage'
+import { getBrowserMetadata } from '../utils/browserInfo'
 
 const ViewTicket = () => {
   const { id } = useParams()
@@ -64,6 +66,7 @@ const ViewTicket = () => {
     try {
       const response = await axios.get(`/api/tickets/search/${id}`)
       setTicket(response.data)
+      saveRecentTicket(response.data)
       setMessages(response.data.messages || [])
     } catch (err) {
       setError('Ticket not found')
@@ -112,6 +115,15 @@ const ViewTicket = () => {
       if (selectedFile) {
         formData.append('image', selectedFile);
       }
+      
+      const assetInfo = ticket.asset_id ? {
+        name: ticket.asset_name,
+        model: ticket.asset_model,
+        asset_code: ticket.asset_code
+      } : null;
+      
+      const metadata = getBrowserMetadata(assetInfo);
+      formData.append('metadata', JSON.stringify(metadata));
 
       await axios.post(`/api/tickets/${ticket.id}/messages`, formData, {
         headers: { 'Content-Type': 'multipart/form-data' }

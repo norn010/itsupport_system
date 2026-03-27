@@ -26,6 +26,7 @@ const ActivityTimeline = ({ ticketId }) => {
       case 'status_changed': return '🔄';
       case 'priority_changed': return '⚡';
       case 'staff_assigned': return '👤';
+      case 'message_sent': return '💬';
       default: return '📌';
     }
   };
@@ -60,9 +61,24 @@ const ActivityTimeline = ({ ticketId }) => {
                   {new Date(log.created_at).toLocaleString()}
                 </span>
               </div>
-              <p className="text-xs text-gray-500 mt-1">
-                By: <span className="font-medium">{log.actor_name}</span> ({log.actor_type})
+              <p className="text-xs text-gray-500 mt-1 flex items-center gap-2">
+                <span>By: <span className="font-medium">{log.actor_name}</span> ({log.actor_type})</span>
+                {log.browser_info && (
+                   <span className="flex items-center gap-1 bg-slate-100 px-1.5 py-0.5 rounded text-[10px]">
+                     🌐 {log.browser_info}
+                   </span>
+                )}
               </p>
+              
+              {(log.device_name || log.device_asset_code || log.ip_address || log.comp_name) && (
+                <div className="mt-2 text-[10px] text-gray-400 font-medium flex flex-wrap gap-2 pt-2 border-t border-slate-50">
+                  {log.comp_name && <span className="text-slate-600 font-bold">💻 Host: {log.comp_name}</span>}
+                  {log.ip_address && <span className="text-slate-600 font-bold">📡 IP: {log.ip_address}</span>}
+                  {log.device_name && <span>🖥 Device: {log.device_name}</span>}
+                  {log.device_model && <span>📦 Model: {log.device_model}</span>}
+                  {log.device_asset_code && <span className="text-indigo-600 font-bold">🏷 Code: {log.device_asset_code}</span>}
+                </div>
+              )}
             </div>
           </div>
         ))}

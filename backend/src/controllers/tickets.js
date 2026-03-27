@@ -53,7 +53,9 @@ export const createTicket = async (req, res) => {
     await notifyAllITStaff('new_ticket', 'New Ticket Received', `A new ticket ${ticket.ticket_id} needs attention.`, ticket.ticket_id);
 
     // Log activity
-    await logActivity(ticket.ticket_id, 'ticket_created', 'Ticket created by user', req.user);
+    const metadata = req.body.metadata ? JSON.parse(req.body.metadata) : {};
+    metadata.ip_address = req.ip || req.headers['x-forwarded-for'] || req.socket.remoteAddress;
+    await logActivity(ticket.ticket_id, 'ticket_created', 'Ticket created by user', req.user, metadata);
 
     res.status(201).json({
       message: 'Ticket created successfully',

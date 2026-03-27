@@ -1,6 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react'
 import axios from 'axios'
 import { Link } from 'react-router-dom'
+import { saveRecentTicket } from '../utils/ticketStorage'
+import { getBrowserMetadata } from '../utils/browserInfo'
 
 const CreateTicket = () => {
   const [formData, setFormData] = useState({
@@ -13,6 +15,7 @@ const CreateTicket = () => {
     subcategory_id: '',
     asset_id: '',
   })
+  const [computerName, setComputerName] = useState('')
   // Asset search state
   const [assetSearch, setAssetSearch] = useState('')
   const [assetResults, setAssetResults] = useState([])
@@ -32,11 +35,14 @@ const CreateTicket = () => {
     const { name, value } = e.target
     setFormData(prev => ({ ...prev, [name]: value }))
   }
-
   useEffect(() => {
     axios.get('/api/tickets/departments')
       .then(res => setExistingDepartments(res.data.map(d => d.department)))
       .catch(err => console.error(err))
+    
+    // Load saved computer name
+    const savedComp = localStorage.getItem('last_computer_name');
+    if (savedComp) setComputerName(savedComp);
   }, [])
 
   // Close asset dropdown on outside click
@@ -111,12 +117,19 @@ const CreateTicket = () => {
       files.forEach(file => {
         data.append('images', file)
       })
+      
+      localStorage.setItem('last_computer_name', computerName);
+      const metadata = getBrowserMetadata(selectedAsset);
+      if (computerName) metadata.comp_name = computerName;
+      
+      data.append('metadata', JSON.stringify(metadata));
 
       const response = await axios.post('/api/tickets', data, {
         headers: { 'Content-Type': 'multipart/form-data' }
       })
 
       setSuccess(response.data.ticket)
+      saveRecentTicket(response.data.ticket)
       setFormData({
         name: '',
         department: '',
@@ -253,7 +266,19 @@ const CreateTicket = () => {
             )}
           </div>
 
-
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Computer Name / PC Name</label>
+              <input
+                type="text"
+                value={computerName}
+                onChange={(e) => setComputerName(e.target.value)}
+                className="input"
+                placeholder="e.g., DESKTOP-4R3OEOI"
+              />
+              <p className="text-[10px] text-gray-400 mt-1 italic">ระบบจะจดจำค่านี้ไว้ใช้ในครั้งถัดไป</p>
+            </div>
+          </div>
 
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Issue Title *</label>

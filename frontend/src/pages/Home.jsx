@@ -1,8 +1,14 @@
-import React from 'react';
-import { useNavigate } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
+import { useNavigate, Link } from 'react-router-dom';
+import { getRecentTickets } from '../utils/ticketStorage';
 
 const Home = () => {
   const navigate = useNavigate();
+  const [recentTickets, setRecentTickets] = useState([]);
+
+  useEffect(() => {
+    setRecentTickets(getRecentTickets());
+  }, []);
 
   return (
     <div className="min-h-[80vh] flex flex-col items-center justify-center px-4 py-8 md:py-0 animate-in fade-in duration-700">
@@ -73,6 +79,48 @@ const Home = () => {
             <div className="absolute top-0 right-0 -translate-y-12 translate-x-12 w-64 h-64 bg-indigo-100/30 rounded-full blur-3xl opacity-0 group-hover:opacity-100 transition-opacity duration-700"></div>
           </button>
         </div>
+
+        {/* Recent Tickets Section */}
+        {recentTickets.length > 0 && (
+          <div className="pt-8 md:pt-12 text-left bg-white/50 backdrop-blur-sm rounded-3xl p-6 md:p-8 shadow-sm border border-slate-100">
+            <div className="flex items-center justify-between mb-6">
+              <h3 className="text-lg font-black text-slate-800 flex items-center gap-2">
+                <span className="w-2 h-6 bg-primary-500 rounded-full"></span>
+                Your Recent Tickets
+              </h3>
+              <span className="text-[10px] font-bold uppercase tracking-widest text-slate-400">
+                Last {recentTickets.length} items
+              </span>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              {recentTickets.map((ticket) => (
+                <Link
+                  key={ticket.ticket_id}
+                  to={`/ticket/${ticket.ticket_id}`}
+                  className="group flex flex-col p-4 rounded-2xl bg-white border border-slate-100 shadow-sm hover:shadow-md hover:border-primary-200 transition-all duration-300"
+                >
+                  <div className="flex justify-between items-start mb-2">
+                    <span className="text-[10px] font-bold font-mono text-primary-600 bg-primary-50 px-2 py-0.5 rounded-full">
+                      #{ticket.ticket_id}
+                    </span>
+                    <span className="text-[10px] text-slate-400 font-medium">
+                      {new Date(ticket.lastViewed).toLocaleDateString()}
+                    </span>
+                  </div>
+                  <h4 className="text-sm font-bold text-slate-700 truncate group-hover:text-primary-600 transition-colors">
+                    {ticket.issue_title}
+                  </h4>
+                  <div className="mt-2 text-[10px] text-primary-500 font-bold uppercase tracking-widest flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                    View Status 
+                    <svg className="w-3 h-3 group-hover:translate-x-0.5 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M13 7l5 5m0 0l-5 5m5-5H6" />
+                    </svg>
+                  </div>
+                </Link>
+              ))}
+            </div>
+          </div>
+        )}
 
         <div className="pt-8 md:pt-12 flex flex-col sm:flex-row justify-center items-center gap-4 md:gap-8 text-slate-400 font-bold uppercase tracking-widest text-[10px] md:text-xs">
           <div className="flex items-center gap-2 bg-slate-50 px-4 py-2 rounded-full border border-slate-100">
