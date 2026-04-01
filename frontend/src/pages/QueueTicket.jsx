@@ -39,6 +39,10 @@ const QueueTicket = () => {
       return new Date(a.created_at) - new Date(b.created_at)
     })
 
+  const resolvedTickets = tickets
+    .filter(t => t.status === 'Resolved')
+    .sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
+
   const getStatusBadge = (status) => {
     const classes = {
       'Open': 'badge-open',
@@ -175,7 +179,92 @@ const QueueTicket = () => {
         </div>
       </div>
 
-      {/* 2. All Tickets List */}
+      {/* 2. Resolved Queue */}
+      <div className="space-y-4">
+        <div className="flex items-center gap-3">
+          <h2 className="text-xl md:text-2xl font-black text-slate-800">Resolved Tasks</h2>
+          <span className="bg-blue-600 text-white px-2.5 py-0.5 rounded-lg text-xs font-black shadow-sm shadow-blue-100">{resolvedTickets.length}</span>
+        </div>
+
+        {/* Mobile Cards (Resolved) */}
+        <div className="md:hidden space-y-3">
+          {resolvedTickets.length > 0 ? resolvedTickets.map(t => (
+            <div key={t.id} className="card !p-4 border-l-4 border-blue-500 bg-white shadow-sm ring-1 ring-slate-100">
+              <div className="flex justify-between items-start mb-3">
+                <span className="text-[10px] font-black px-2 py-1 bg-slate-100 text-slate-600 rounded uppercase tracking-wider">{t.ticket_id}</span>
+                {getPriorityBadge(t.priority)}
+              </div>
+              <h3 className="font-bold text-slate-900 mb-2 leading-snug">{t.issue_title}</h3>
+              <div className="flex items-center gap-3 mb-3 pb-3 border-b border-slate-50">
+                <div className="w-8 h-8 rounded-full bg-blue-50 text-blue-600 flex items-center justify-center text-xs font-black">{t.name?.charAt(0)}</div>
+                <div className="min-w-0">
+                  <p className="text-xs font-bold text-slate-800 truncate">{t.name}</p>
+                  <p className="text-[10px] text-slate-400 font-bold uppercase">{t.department}</p>
+                </div>
+              </div>
+              <div className="flex justify-between items-center text-[10px] font-bold uppercase">
+                <div className="text-blue-600">Assigned: {t.assigned_name || '—'}</div>
+                <div className="text-slate-400">{new Date(t.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</div>
+              </div>
+            </div>
+          )) : (
+            <div className="text-center py-12 bg-slate-50 rounded-2xl border-2 border-dashed border-slate-200 text-slate-400 italic text-sm">No resolved tasks.</div>
+          )}
+        </div>
+
+        {/* Desktop Table (Resolved) */}
+        <div className="hidden md:block card shadow-md border-blue-100 overflow-hidden ring-1 ring-blue-50 bg-white">
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead className="bg-slate-50/50 border-b border-blue-50">
+                <tr>
+                  <th className="px-6 py-4 text-left text-xs font-black text-slate-400 uppercase tracking-widest whitespace-nowrap">Ticket ID</th>
+                  <th className="px-6 py-4 text-left text-xs font-black text-slate-400 uppercase tracking-widest">Title</th>
+                  <th className="px-6 py-4 text-left text-xs font-black text-slate-400 uppercase tracking-widest">Requester</th>
+                  <th className="px-6 py-4 text-left text-xs font-black text-slate-400 uppercase tracking-widest">Priority</th>
+                  <th className="px-6 py-4 text-left text-xs font-black text-slate-400 uppercase tracking-widest">Assigned To</th>
+                  <th className="px-6 py-4 text-left text-xs font-black text-slate-400 uppercase tracking-widest">Time</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100">
+                {resolvedTickets.map((t) => (
+                  <tr key={t.id} className="hover:bg-slate-50 transition-colors group">
+                    <td className="px-6 py-5 whitespace-nowrap">
+                      <span className="font-black text-slate-900 bg-slate-100 px-3 py-1.5 rounded-lg text-sm group-hover:bg-white border border-transparent group-hover:border-slate-200 transition-colors">
+                        {t.ticket_id}
+                      </span>
+                    </td>
+                    <td className="px-6 py-5">
+                      <p className="text-sm font-bold text-slate-800 line-clamp-1">{t.issue_title}</p>
+                    </td>
+                    <td className="px-6 py-5">
+                      <div className="flex items-center gap-3">
+                        <div className="w-8 h-8 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center text-xs font-black uppercase flex-shrink-0">
+                          {t.name?.charAt(0)}
+                        </div>
+                        <div>
+                          <p className="text-sm font-black text-slate-800">{t.name}</p>
+                          <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">{t.department}</p>
+                        </div>
+                      </div>
+                    </td>
+                    <td className="px-6 py-5">{getPriorityBadge(t.priority)}</td>
+                    <td className="px-6 py-5 text-sm font-bold text-blue-600">{t.assigned_name || '-'}</td>
+                    <td className="px-6 py-5 whitespace-nowrap">
+                      <div className="text-[10px] font-black text-slate-400 uppercase leading-tight">
+                        <div>{new Date(t.created_at).toLocaleDateString([], { day: '2-digit', month: '2-digit', year: 'numeric' })}</div>
+                        <div className="text-blue-600/70">{new Date(t.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</div>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      {/* 3. All Tickets List */}
       <div className="space-y-4">
         <div className="flex items-center gap-3">
           <h2 className="text-xl md:text-2xl font-black text-slate-800">All Requests</h2>

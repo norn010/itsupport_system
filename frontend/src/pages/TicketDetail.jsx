@@ -42,6 +42,29 @@ const TicketDetail = () => {
   const [subCatDropdownOpen, setSubCatDropdownOpen] = useState(false)
   const assetSearchRef = useRef(null)
 
+  const [isDragging, setIsDragging] = useState(false)
+
+  const handleDragOver = (e) => {
+    e.preventDefault()
+    setIsDragging(true)
+  }
+
+  const handleDragLeave = (e) => {
+    e.preventDefault()
+    setIsDragging(false)
+  }
+
+  const handleDrop = (e) => {
+    e.preventDefault()
+    setIsDragging(false)
+    const files = e.dataTransfer.files
+    if (files && files.length > 0) {
+      if (files[0].type.startsWith('image/')) {
+        handleSelectedFile(files[0])
+      }
+    }
+  }
+
   const handlePaste = (e) => {
     const items = e.clipboardData.items;
     for (let i = 0; i < items.length; i++) {
@@ -398,7 +421,12 @@ const TicketDetail = () => {
           )}
 
           {/* Chat Section — Full Width in main column */}
-          <div className="card shadow-sm border-slate-200 bg-white flex flex-col h-[700px]">
+          <div 
+            className={`card shadow-sm border-slate-200 bg-white flex flex-col h-[700px] transition-all duration-300 ${isDragging ? 'ring-4 ring-indigo-500 ring-opacity-50 !border-indigo-400 scale-[1.005]' : ''}`}
+            onDragOver={handleDragOver}
+            onDragLeave={handleDragLeave}
+            onDrop={handleDrop}
+          >
             <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between flex-shrink-0">
               <div className="flex items-center gap-2">
                 <div className="p-2 bg-indigo-50 rounded-lg text-indigo-600">
@@ -412,7 +440,15 @@ const TicketDetail = () => {
               </div>
             </div>
             
-            <div className="p-6 bg-slate-50/30 flex-1 overflow-y-auto border-b border-slate-100 scrollbar-thin scrollbar-thumb-slate-200">
+            <div className={`p-6 bg-slate-50/30 flex-1 overflow-y-auto border-b border-slate-100 scrollbar-thin scrollbar-thumb-slate-200 relative ${isDragging ? '!bg-indigo-50/50' : ''}`}>
+              {isDragging && (
+                <div className="absolute inset-x-6 inset-y-6 z-10 bg-indigo-500/10 backdrop-blur-[2px] flex items-center justify-center border-2 border-dashed border-indigo-400 rounded-3xl animate-in fade-in zoom-in duration-200 pointer-events-none">
+                  <div className="bg-white px-8 py-6 rounded-3xl shadow-2xl flex flex-col items-center gap-3 border border-indigo-50">
+                    <div className="text-5xl animate-bounce">🖼️</div>
+                    <p className="font-black text-indigo-600 uppercase tracking-widest text-sm">Drop to share image</p>
+                  </div>
+                </div>
+              )}
               {messages.length === 0 ? (
                 <div className="h-full flex flex-col items-center justify-center text-slate-400 opacity-60">
                   <svg className="w-16 h-16 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1" d="M17 8h2a2 2 0 012 2v6a2 2 0 01-2 2h-2v4l-4-4H9a1.994 1.994 0 01-1.414-.586m0 0L11 14h4a2 2 0 002-2V6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2v4l.586-.586z"></path></svg>

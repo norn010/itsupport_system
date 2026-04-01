@@ -92,12 +92,35 @@ const ViewTicket = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
   }
 
+  const [isDragging, setIsDragging] = useState(false)
+
   const handlePaste = (e) => {
     const items = e.clipboardData.items;
     for (let i = 0; i < items.length; i++) {
       if (items[i].type.indexOf('image') !== -1) {
         const file = items[i].getAsFile();
         handleSelectedFile(file);
+      }
+    }
+  }
+
+  const handleDragOver = (e) => {
+    e.preventDefault()
+    setIsDragging(true)
+  }
+
+  const handleDragLeave = (e) => {
+    e.preventDefault()
+    setIsDragging(false)
+  }
+
+  const handleDrop = (e) => {
+    e.preventDefault()
+    setIsDragging(false)
+    const files = e.dataTransfer.files
+    if (files && files.length > 0) {
+      if (files[0].type.startsWith('image/')) {
+        handleSelectedFile(files[0])
       }
     }
   }
@@ -316,10 +339,23 @@ const ViewTicket = () => {
       </div>
 
       {/* Chat */}
-      <div className="card">
+      <div 
+        className={`card transition-all duration-300 ${isDragging ? 'ring-4 ring-primary-500 ring-opacity-50 border-primary-500 scale-[1.01]' : ''}`}
+        onDragOver={handleDragOver}
+        onDragLeave={handleDragLeave}
+        onDrop={handleDrop}
+      >
         <h2 className="text-xl font-bold mb-4">Chat with IT Support</h2>
         
-        <div className="bg-gray-50 rounded-lg p-4 h-80 overflow-y-auto mb-4">
+        <div className={`bg-gray-50 rounded-lg p-4 h-80 overflow-y-auto mb-4 relative ${isDragging ? 'bg-primary-50' : ''}`}>
+          {isDragging && (
+            <div className="absolute inset-0 z-10 bg-primary-500/10 backdrop-blur-[2px] flex items-center justify-center border-2 border-dashed border-primary-500 rounded-lg animate-in fade-in zoom-in duration-200">
+               <div className="bg-white px-6 py-4 rounded-2xl shadow-xl flex flex-col items-center gap-2">
+                 <div className="text-4xl">🖼️</div>
+                 <p className="font-black text-primary-600 uppercase tracking-widest text-sm">Drop Image to Attach</p>
+               </div>
+            </div>
+          )}
           {messages.length === 0 ? (
             <p className="text-gray-500 text-center">No messages yet. Start the conversation!</p>
           ) : (
